@@ -2,41 +2,162 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { User, Mail, Save } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { useToast } from "@/components/ui/use-toast"
+import { User, Mail, Save, Upload, Key, AlertCircle } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
+import { updateUserProfile, uploadProfilePicture, changePassword } from "@/lib/auth-api"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export default function ProfilePage() {
-  const { user } = useAuth()
+  const { user, token, isAuthenticated, updateUser } = useAuth()
+  const { toast } = useToast()
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Use the actual user data from auth context
-  const [userData, setUserData] = useState({
-    name: "",
-    email: "",
-    profileImage: "/zoro-profile.png",
-  })
+  // Form states
+  const [username, setUsername] = useState("")
+  const [profileImage, setProfileImage] = useState<string>("/zoro-profile.png")
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [oldPassword, setOldPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
 
-  // Update userData when user data is available
+  // UI states
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+  const [showPasswordForm, setShowPasswordForm] = useState(false)
+
+  // Update form with user data when available
   useEffect(() => {
     if (user) {
-      setUserData({
-        name: user.username || "",
-        email: user.email || "",
-        profileImage: user.avatarURL || "/zoro-profile.png",
-      })
+      setUsername(user.username || "")
+      setProfileImage(user.avatarURL || "/zoro-profile.png")
     }
   }, [user])
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    // In a real app, this would save the user data to a database
-    alert("Profile updated successfully!")
+  // Handle profile image selection
+  const handleImageClick = () => {
+    fileInputRef.current?.click()
   }
 
-  const handleResetPassword = () => {
-    alert("A mail to reset your password has been sent to your email")
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      // Check file size (limit to 2MB)
+      if (file.size > 2 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Please select an image smaller than 2MB",
+          variant: "destructive",
+        })
+        return
+      }
+
+      setSelectedFile(file)
+      // Create a preview URL
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setProfileImage(event.target.result as string)
+        }
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  // Handle profile update
+  const handleProfileUpdate = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!isAuthenticated || !token) {
+      setError("You must be logged in to update your profile")
+      return
+    }
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      let profileUrl = user?.avatarURL
+
+      // If a new profile image was selected, upload it
+      if (selectedFile) {
+        try {
+          const uploadResult = await uploadProfilePicture(token, selectedFile)
+          profileUrl = uploadResult.profile_url
+        } catch (uploadErr) {
+          console.error("Error uploading profile picture:", uploadErr)
+          // Continue with username update even if image upload fails
+        }
+      }
+
+      // Update the username (even if image upload fails)
+      if (username !== user?.username) {
+        await updateUserProfile(token, {
+          username,
+        })
+      }
+
+      // Update the user in the auth context
+      updateUser({
+        username,
+        avatarURL: profileUrl,
+      })
+
+      toast({
+        title: "Profile Updated",
+        description: "Your profile has been updated successfully.",
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update profile")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Handle password change
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!isAuthenticated || !token) {
+      setPasswordError("You must be logged in to change your password")
+      return
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError("New passwords do not match")
+      return
+    }
+
+    setIsLoading(true)
+    setPasswordError(null)
+
+    try {
+      await changePassword(token, {
+        old_password: oldPassword,
+        new_password: newPassword,
+      })
+
+      toast({
+        title: "Password Changed",
+        description: "Your password has been changed successfully.",
+      })
+
+      // Reset password fields
+      setOldPassword("")
+      setNewPassword("")
+      setConfirmPassword("")
+      setShowPasswordForm(false)
+    } catch (err) {
+      setPasswordError(err instanceof Error ? err.message : "Failed to change password")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -44,26 +165,39 @@ export default function ProfilePage() {
       <h1 className="text-2xl font-bold mb-8">Profile Settings</h1>
 
       <div className="bg-gray-900 rounded-lg p-6 max-w-2xl mx-auto">
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
         <div className="flex flex-col md:flex-row gap-8 mb-8">
           <div className="flex flex-col items-center">
-            <div className="w-32 h-32 rounded-full overflow-hidden mb-4">
+            <div
+              className="w-32 h-32 rounded-full overflow-hidden mb-4 cursor-pointer border-2 border-gray-700 hover:border-purple-500 transition-colors"
+              onClick={handleImageClick}
+            >
               <Image
-                src={userData.profileImage || "/placeholder.svg"}
-                alt={userData.name}
+                src={profileImage || "/placeholder.svg"}
+                alt={username}
                 width={128}
                 height={128}
                 className="object-cover"
               />
             </div>
-            <Button variant="outline" size="sm">
+            <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
+            <Button variant="outline" size="sm" onClick={handleImageClick} className="flex items-center">
+              <Upload size={14} className="mr-1" />
               Change Avatar
             </Button>
+            <p className="text-xs text-gray-500 mt-1">Max size: 2MB</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="flex-1 space-y-4">
+          <form onSubmit={handleProfileUpdate} className="flex-1 space-y-4">
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-400 mb-1">
-                Full Name
+                Username
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -72,8 +206,8 @@ export default function ProfilePage() {
                 <input
                   type="text"
                   id="name"
-                  value={userData.name}
-                  onChange={(e) => setUserData({ ...userData, name: e.target.value })}
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   className="bg-gray-800 text-white pl-10 pr-4 py-2 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
               </div>
@@ -90,7 +224,7 @@ export default function ProfilePage() {
                 <input
                   type="email"
                   id="email"
-                  value={userData.email}
+                  value={user?.email || ""}
                   readOnly
                   className="bg-gray-700 text-white pl-10 pr-4 py-2 rounded-md w-full focus:outline-none cursor-not-allowed opacity-80"
                 />
@@ -98,16 +232,102 @@ export default function ProfilePage() {
               <p className="text-xs text-gray-500 mt-1">Email address cannot be changed</p>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">Change Password</label>
-              <Button type="button" variant="outline" onClick={handleResetPassword} className="w-full">
-                Send Password Reset Email
-              </Button>
-            </div>
+            {showPasswordForm ? (
+              <div className="space-y-4 border border-gray-700 rounded-md p-4">
+                {passwordError && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{passwordError}</AlertDescription>
+                  </Alert>
+                )}
 
-            <Button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white mt-4">
-              <Save size={16} className="mr-2" />
-              Save Changes
+                <h3 className="text-sm font-medium text-gray-300">Change Password</h3>
+
+                <div>
+                  <Label htmlFor="current-password" className="text-sm text-gray-400">
+                    Current Password
+                  </Label>
+                  <Input
+                    id="current-password"
+                    type="password"
+                    value={oldPassword}
+                    onChange={(e) => setOldPassword(e.target.value)}
+                    className="bg-gray-800 text-white mt-1"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="new-password" className="text-sm text-gray-400">
+                    New Password
+                  </Label>
+                  <Input
+                    id="new-password"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="bg-gray-800 text-white mt-1"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="confirm-password" className="text-sm text-gray-400">
+                    Confirm New Password
+                  </Label>
+                  <Input
+                    id="confirm-password"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="bg-gray-800 text-white mt-1"
+                    required
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    onClick={handlePasswordChange}
+                    className="bg-purple-600 hover:bg-purple-700 text-white"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "Updating..." : "Update Password"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setShowPasswordForm(false)
+                      setPasswordError(null)
+                      setOldPassword("")
+                      setNewPassword("")
+                      setConfirmPassword("")
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Change Password</label>
+                <Button type="button" variant="outline" onClick={() => setShowPasswordForm(true)} className="w-full">
+                  <Key size={16} className="mr-2" />
+                  Change Password
+                </Button>
+              </div>
+            )}
+
+            <Button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white mt-4" disabled={isLoading}>
+              {isLoading ? (
+                "Saving..."
+              ) : (
+                <>
+                  <Save size={16} className="mr-2" />
+                  Save Changes
+                </>
+              )}
             </Button>
           </form>
         </div>

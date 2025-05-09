@@ -18,6 +18,7 @@ interface AuthContextProps {
   login: (credentials: LoginRequest) => Promise<boolean>
   register: (credentials: RegisterRequest) => Promise<boolean>
   logout: () => void
+  updateUser: (userData: Partial<User>) => void
 }
 
 interface LoginRequest {
@@ -39,6 +40,7 @@ const AuthContext = createContext<AuthContextProps>({
   login: async () => false,
   register: async () => false,
   logout: () => {},
+  updateUser: () => {},
 })
 
 export const useAuth = () => useContext(AuthContext)
@@ -209,6 +211,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem("auth_user")
   }
 
+  // Function to update user data after profile changes
+  const updateUser = (userData: Partial<User>) => {
+    if (user) {
+      const updatedUser = { ...user, ...userData }
+      setUser(updatedUser)
+      localStorage.setItem("auth_user", JSON.stringify(updatedUser))
+    }
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -219,6 +230,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         login,
         register,
         logout,
+        updateUser,
       }}
     >
       {children}
