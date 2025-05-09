@@ -7,7 +7,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const episodeId = searchParams.get("episodeId")
 
-    console.log(`API route: /api/anime/animepahe/watch called with episodeId: ${episodeId}`)
+    console.log(`API route: /api/anime/zoro/watch called with episodeId: ${episodeId}`)
 
     if (!episodeId) {
       console.error("Missing episodeId parameter")
@@ -21,13 +21,10 @@ export async function GET(request: Request) {
     // Don't split the episodeId - use it as is for the API request
     console.log(`Using full episodeId for API request: ${episodeId}`)
 
-    // Here you would make the actual API request to get the video sources
-    // For now, we'll continue to use mock data but in a real implementation,
-    // you would use the full episodeId to fetch from your external API
-
+    // Forward the request to the actual Consumet API
     try {
-      // Forward the request to the actual Consumet API
-      const consumetApiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000/anime/animepahe"
+      // Use the Zoro endpoint instead of animepahe
+      const consumetApiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000/anime/zoro"
       const apiUrl = `${consumetApiUrl}/watch?episodeId=${encodeURIComponent(episodeId)}`
 
       console.log(`Forwarding request to Consumet API: ${apiUrl}`)
@@ -43,7 +40,20 @@ export async function GET(request: Request) {
         const apiData = await apiResponse.json()
         console.log(`Received response from Consumet API with ${apiData.sources?.length || 0} sources`)
 
-        // Return the actual API response
+        // Proxy all HLS URLs in the sources
+        if (apiData.sources && Array.isArray(apiData.sources)) {
+          apiData.sources = apiData.sources.map((source: any) => {
+            if (source.url && source.url.includes(".m3u8")) {
+              return {
+                ...source,
+                url: `https://hls.shrina.dev/proxy/${encodeURIComponent(source.url)}`,
+              }
+            }
+            return source
+          })
+        }
+
+        // Return the actual API response with proxied sources
         return NextResponse.json(apiData, {
           headers: {
             "Cache-Control": "no-store, max-age=0",
@@ -62,29 +72,33 @@ export async function GET(request: Request) {
     // Return mock video sources with a consistent structure
     const response = {
       headers: {
-        Referer: "https://kwik.cx/",
+        Referer: "https://zoro.to/",
       },
       sources: [
         {
-          url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8", // Public test HLS stream
+          url:
+            "https://hls.shrina.dev/proxy/" + encodeURIComponent("https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"), // Public test HLS stream
           isM3U8: true,
           quality: "720p",
           isDub: false,
         },
         {
-          url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
+          url:
+            "https://hls.shrina.dev/proxy/" + encodeURIComponent("https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"),
           isM3U8: true,
           quality: "480p",
           isDub: false,
         },
         {
-          url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
+          url:
+            "https://hls.shrina.dev/proxy/" + encodeURIComponent("https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"),
           isM3U8: true,
           quality: "360p",
           isDub: false,
         },
         {
-          url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
+          url:
+            "https://hls.shrina.dev/proxy/" + encodeURIComponent("https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"),
           isM3U8: true,
           quality: "720p [English Dub]",
           isDub: true,

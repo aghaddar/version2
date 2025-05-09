@@ -4,7 +4,7 @@ import { MOCK_POPULAR_ANIME } from "./mock-data"
 
 // Define the base URL for the Consumet API
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000"
-const PROVIDER_PATH = "/anime/animepahe" // Consumet API path for animepahe provider
+const PROVIDER_PATH = "/anime/zoro" // Changed from animepahe to zoro
 const HLS_PROXY_URL = "https://hls.shrina.dev/proxy/" // Proxy service for HLS streams
 
 export interface AnimeResult {
@@ -75,6 +75,32 @@ function proxyHlsUrl(url: string): string {
   return url
 }
 
+// Normalize anime data from Zoro to match our expected format
+function normalizeZoroAnime(zoroAnime: any): AnimeResult {
+  return {
+    id: zoroAnime.id || "",
+    title: zoroAnime.title || zoroAnime.name || "",
+    image: zoroAnime.image || zoroAnime.poster || "",
+    releaseDate: zoroAnime.releaseDate || zoroAnime.year || "",
+    type: zoroAnime.type || zoroAnime.subOrDub || "",
+    description: zoroAnime.description || "",
+    status: zoroAnime.status || "",
+    totalEpisodes: zoroAnime.totalEpisodes || zoroAnime.episodes?.length || 0,
+    genres: zoroAnime.genres || [],
+    // Convert Zoro episodes format to our expected format
+    episodes: Array.isArray(zoroAnime.episodes)
+      ? zoroAnime.episodes.map((ep: any) => ({
+          id: ep.id,
+          number: ep.number || Number.parseInt(ep.id.split("-").pop()) || 0,
+          title: ep.title || `Episode ${ep.number || ep.id.split("-").pop()}`,
+        }))
+      : zoroAnime.episodes,
+    // Keep any other fields that might be present
+    ...(zoroAnime.recommendations && { recommendations: zoroAnime.recommendations.map(normalizeZoroAnime) }),
+    ...(zoroAnime.rating && { rating: zoroAnime.rating }),
+  }
+}
+
 // Fetch function with timeout and error handling
 async function safeFetch(url: string, fallbackData: any) {
   try {
@@ -127,7 +153,7 @@ export async function getPopularAnime(): Promise<AnimeResult[]> {
   console.log("Getting popular anime from Consumet API...")
 
   // Construct the URL for the Consumet API popular endpoint
-  const url = `${API_BASE_URL}${PROVIDER_PATH}/popular`
+  const url = `${API_BASE_URL}${PROVIDER_PATH}/top-airing` // Changed to Zoro's top-airing endpoint
   console.log(`Attempting to fetch popular anime from: ${url}`)
 
   try {
@@ -136,7 +162,8 @@ export async function getPopularAnime(): Promise<AnimeResult[]> {
     // Return the results array from the response or fallback to mock data
     if (data && data.results && Array.isArray(data.results)) {
       console.log(`Successfully retrieved ${data.results.length} popular anime from Consumet API`)
-      return data.results
+      // Normalize data to match our expected format
+      return data.results.map(normalizeZoroAnime)
     } else {
       console.log("Consumet API response format unexpected, using mock data")
       return MOCK_POPULAR_ANIME
@@ -159,7 +186,7 @@ export async function getRecentEpisodes(): Promise<AnimeResult[]> {
   }))
 
   // Construct the URL for the Consumet API recent episodes endpoint
-  const url = `${API_BASE_URL}${PROVIDER_PATH}/recent-episodes`
+  const url = `${API_BASE_URL}${PROVIDER_PATH}/recent-episodes` // This endpoint exists in Zoro too
   console.log(`Attempting to fetch recent episodes from: ${url}`)
 
   try {
@@ -168,7 +195,12 @@ export async function getRecentEpisodes(): Promise<AnimeResult[]> {
     // Return the results array from the response or fallback to mock data
     if (data && data.results && Array.isArray(data.results)) {
       console.log(`Successfully retrieved ${data.results.length} recent episodes from Consumet API`)
-      return data.results
+      // Normalize data to match our expected format
+      return data.results.map((anime: any) => ({
+        ...normalizeZoroAnime(anime),
+        episodeNumber: anime.episodeNumber || anime.episode || anime.number || 1,
+        episodeId: anime.episodeId || anime.id || `${anime.id}-episode-1`,
+      }))
     } else {
       console.log("Consumet API response format unexpected, using mock data")
       return mockRecentEpisodes
@@ -191,6 +223,7 @@ export async function searchAnime(query: string): Promise<AnimeResult[]> {
   )
 
   // Construct the URL for the Consumet API search endpoint
+  // Zoro uses different search endpoint format
   const url = `${API_BASE_URL}${PROVIDER_PATH}/${encodeURIComponent(query)}`
   console.log(`Searching anime with query URL: ${url}`)
 
@@ -200,7 +233,8 @@ export async function searchAnime(query: string): Promise<AnimeResult[]> {
     // Return the results array from the response or fallback to mock data
     if (data && data.results && Array.isArray(data.results)) {
       console.log(`Successfully retrieved ${data.results.length} search results from Consumet API`)
-      return data.results
+      // Normalize data to match our expected format
+      return data.results.map(normalizeZoroAnime)
     } else {
       console.log("Consumet API response format unexpected, using mock data")
       return filteredMockResults
@@ -236,12 +270,15 @@ export async function getAnimeInfo(id: string): Promise<AnimeResult | null> {
     : null
 
   // Construct the URL for the Consumet API anime info endpoint
-  const url = `${API_BASE_URL}${PROVIDER_PATH}/info/${encodeURIComponent(id)}`
+  const url = `${API_BASE_URL}${PROVIDER_PATH}/info?id=${encodeURIComponent(id)}` // Changed to Zoro's format
   console.log(`Fetching anime info from: ${url}`)
 
   try {
     const data = await safeFetch(url, mockAnimeInfo)
-    return data
+    if (!data) return mockAnimeInfo
+
+    // Normalize the data to match our expected format
+    return normalizeZoroAnime(data)
   } catch (error: any) {
     console.error("Error in getAnimeInfo:", error)
     console.log("Using mock data due to error")
@@ -252,8 +289,8 @@ export async function getAnimeInfo(id: string): Promise<AnimeResult | null> {
 export async function getRelatedAnime(genres: string[]): Promise<AnimeResult[]> {
   console.log("Fetching related anime based on genres from Consumet API:", genres)
 
-  // For related anime, we'll use the popular endpoint as Consumet doesn't have a specific related endpoint
-  const url = `${API_BASE_URL}${PROVIDER_PATH}/popular`
+  // For related anime, we'll use the top-airing endpoint for Zoro
+  const url = `${API_BASE_URL}${PROVIDER_PATH}/top-airing`
   console.log(`Fetching related anime from: ${url}`)
 
   try {
@@ -262,7 +299,8 @@ export async function getRelatedAnime(genres: string[]): Promise<AnimeResult[]> 
     // Return the results array from the response or fallback to mock data
     if (data && data.results && Array.isArray(data.results)) {
       console.log(`Successfully retrieved ${data.results.length} related anime from Consumet API`)
-      return data.results.slice(0, 4)
+      // Normalize data to match our expected format
+      return data.results.map(normalizeZoroAnime).slice(0, 4)
     } else {
       console.log("Consumet API response format unexpected, using mock data")
       return MOCK_POPULAR_ANIME.slice(0, 4)
@@ -285,8 +323,8 @@ export async function getFeaturedAnime(): Promise<AnimeResult[]> {
   }))
 
   // Construct the URL for the Consumet API featured endpoint
-  // Note: Consumet might not have a dedicated featured endpoint, so we'll use popular and filter
-  const url = `${API_BASE_URL}${PROVIDER_PATH}/featured`
+  // Note: Zoro might not have a dedicated featured endpoint, so we'll use top-airing
+  const url = `${API_BASE_URL}${PROVIDER_PATH}/top-airing?page=1` // Changed to Zoro's endpoint
   console.log(`Attempting to fetch featured anime from: ${url}`)
 
   try {
@@ -303,19 +341,19 @@ export async function getFeaturedAnime(): Promise<AnimeResult[]> {
     const data = await response.json()
     console.log("Featured anime API response:", data)
 
-    // Check if the response is an array
-    if (Array.isArray(data)) {
-      console.log(`Successfully retrieved ${data.length} featured anime from Consumet API`)
-      return data
-    }
-    // If it's an object with a results property that is an array
-    else if (data && Array.isArray(data.results)) {
-      console.log(`Successfully retrieved ${data.results.length} featured anime from Consumet API results property`)
+    // Check if the response is an array or has results property
+    if (data && data.results && Array.isArray(data.results)) {
+      console.log(`Successfully retrieved ${data.results.length} featured anime from Consumet API`)
+      // Get the first 3 results and add descriptions
       return data.results
-    }
-    // Fallback to mock data
-    else {
-      console.warn("Featured anime API did not return an array, using fallback data")
+        .slice(0, 3)
+        .map(normalizeZoroAnime)
+        .map((anime: AnimeResult) => ({
+          ...anime,
+          description: anime.description || "Featured anime from Zoro. Watch now and enjoy!",
+        }))
+    } else {
+      console.warn("Featured anime API did not return expected format, using fallback data")
       return mockFeaturedAnime
     }
   } catch (error: any) {
@@ -335,7 +373,7 @@ export async function getEpisodeSources(episodeId: string): Promise<AnimeSource 
   // Create fallback sources with the custom URL - now using the proxy
   const fallbackSources = {
     headers: {
-      Referer: "https://kwik.cx/",
+      Referer: "https://zoro.to/",
     },
     sources: [
       {
@@ -357,7 +395,8 @@ export async function getEpisodeSources(episodeId: string): Promise<AnimeSource 
     const encodedEpisodeId = encodeURIComponent(episodeId)
 
     // Construct the URL for the Consumet API watch endpoint
-    const url = `${API_BASE_URL}${PROVIDER_PATH}/watch?id=${encodedEpisodeId}`
+    // Zoro uses a different endpoint format for watching
+    const url = `${API_BASE_URL}${PROVIDER_PATH}/watch?episodeId=${encodedEpisodeId}`
     console.log(`Attempting to fetch sources from Consumet API: ${url}`)
 
     try {
@@ -386,13 +425,19 @@ export async function getEpisodeSources(episodeId: string): Promise<AnimeSource 
         return fallbackSources
       }
 
+      // Get subtitles if they exist
+      const subtitles = data.subtitles && Array.isArray(data.subtitles) ? data.subtitles : []
+
       // Proxy all HLS URLs in the sources
       const proxiedSources = {
-        ...data,
+        headers: data.headers || { Referer: "https://zoro.to/" },
         sources: data.sources.map((source: any) => ({
-          ...source,
           url: proxyHlsUrl(source.url),
+          isM3U8: source.isM3U8 || source.url.includes(".m3u8"),
+          quality: source.quality || "unknown",
+          isDub: source.isDub || false,
         })),
+        subtitles: subtitles,
       }
 
       // Log the sources we found

@@ -26,7 +26,10 @@ export default function WatchPage() {
 
   // Custom stream URL as primary source
   const primaryStreamUrl =
-    "https://cors-proxy-shrina.btmd4n.easypanel.host/proxy/https%3A%2F%2Fef.netmagcdn.com%3A2228%2Fhls-playback%2F2f219e7a538f6b41763b2d81888f622d7d999109e4aabe2bf5ebc28de54bf1dd958dfbf6e445f1c6c88acf7779775503c4b0719ce97cec2e5731318a6003ea8a022f782127e4287da2f3917712e14a3b19dd5fcf47922975af8fd214e5d48ce11d1ed7c8611c8abf5324e5c767234b0c542b5d0ad5860297029d86704a4c106d082f5eb8864f1701f63fb4746e94d8a4%2Fmaster.m3u8"
+    "https://hls.shrina.dev/proxy/" +
+    encodeURIComponent(
+      "https://ef.netmagcdn.com:2228/hls-playback/2f219e7a538f6b41763b2d81888f622d7d999109e4aabe2bf5ebc28de54bf1dd958dfbf6e445f1c6c88acf7779775503c4b0719ce97cec2e5731318a6003ea8a022f782127e4287da2f3917712e14a3b19dd5fcf47922975af8fd214e5d48ce11d1ed7c8611c8abf5324e5c767234b0c542b5d0ad5860297029d86704a4c106d082f5eb8864f1701f63fb4746e94d8a4/master.m3u8",
+    )
 
   useEffect(() => {
     async function loadEpisode() {
@@ -38,9 +41,20 @@ export default function WatchPage() {
         const info = await getAnimeInfo(animeId)
         setAnimeInfo(info)
 
-        // Find current episode number
+        // Find current episode number - Zoro might use a different episode ID format
         if (info?.episodes && Array.isArray(info.episodes)) {
-          const episode = info.episodes.find((ep) => ep.id === episodeId)
+          // Try to find the episode by exact ID first
+          let episode = info.episodes.find((ep) => ep.id === episodeId)
+
+          // If not found, try to extract the episode number from the ID
+          if (!episode && episodeId) {
+            const episodeNumberMatch = episodeId.match(/(\d+)(?!.*\d)/)
+            if (episodeNumberMatch) {
+              const episodeNumber = Number.parseInt(episodeNumberMatch[0], 10)
+              episode = info.episodes.find((ep) => ep.number === episodeNumber)
+            }
+          }
+
           if (episode) {
             setCurrentEpisodeNumber(episode.number)
           }
