@@ -112,6 +112,7 @@ export async function getUserProfile(userId: number, token: string): Promise<Use
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
+      cache: "no-store", // Prevent caching to always get fresh data
     })
 
     if (!response.ok) {
@@ -120,8 +121,31 @@ export async function getUserProfile(userId: number, token: string): Promise<Use
     }
 
     const userData = await response.json()
-    console.log("Fetched user profile:", userData)
-    return userData
+    console.log("Raw user profile data from API:", userData)
+
+    // Check if profile_url is a valid URL or base64 data
+    let profileUrl = userData.profile_url || userData.avatar_url
+
+    // If it's a base64 string, use it directly
+    if (profileUrl && profileUrl.startsWith("data:")) {
+      console.log("Profile URL is a base64 string")
+    }
+    // If it's not a valid URL or doesn't start with http/https, it might be a relative path or invalid
+    else if (profileUrl && !profileUrl.startsWith("http")) {
+      // If it's a relative path, prepend the API base URL
+      if (profileUrl.startsWith("/")) {
+        profileUrl = `${API_BASE_URL}${profileUrl}`
+      } else {
+        profileUrl = `${API_BASE_URL}/${profileUrl}`
+      }
+      console.log("Converted profile URL:", profileUrl)
+    }
+
+    return {
+      ...userData,
+      profile_url: profileUrl,
+      avatar_url: profileUrl,
+    }
   } catch (error) {
     console.error("Error fetching user profile:", error)
     throw error
@@ -208,19 +232,7 @@ export async function uploadProfilePicture(token: string, file: File): Promise<{
       reader.onerror = (error) => reject(error)
     })
 
-    // Check if the endpoint exists first
-    const checkResponse = await fetch(`${API_BASE_URL}/auth/profile`, {
-      method: "OPTIONS",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-
-    // If the endpoint doesn't exist, store the data locally
-    if (checkResponse.status === 404) {
-      console.warn("Profile update endpoint not found, storing image locally only")
-      return { profile_url: base64 }
-    }
+    console.log("Uploading profile picture to backend...")
 
     // Update the profile with the base64 image
     const response = await fetch(`${API_BASE_URL}/auth/profile`, {
@@ -235,12 +247,35 @@ export async function uploadProfilePicture(token: string, file: File): Promise<{
     })
 
     if (!response.ok) {
+      if (response.status === 404) {
+        console.warn("Profile update endpoint not found, storing image locally only")
+        return { profile_url: base64 }
+      }
+
       const errorData = await response.json().catch(() => ({ error: "Unknown error" }))
       throw new Error(errorData.error || `Failed to upload profile picture with status: ${response.status}`)
     }
 
     const userData = await response.json()
-    return { profile_url: userData.profile_url || userData.avatar_url || base64 }
+    console.log("Profile picture upload response:", userData)
+
+    // Get the profile URL from the response or use the base64 as fallback
+    const profileUrl = userData.profile_url || userData.avatar_url || base64
+
+    // Update the user data in localStorage to ensure persistence
+    const storedUser = localStorage.getItem("auth_user")
+    if (storedUser) {
+      try {
+        const parsedUser = JSON.parse(storedUser)
+        parsedUser.avatarURL = profileUrl
+        localStorage.setItem("auth_user", JSON.stringify(parsedUser))
+        console.log("Updated user data in localStorage with new profile picture")
+      } catch (e) {
+        console.error("Failed to update localStorage with new profile picture", e)
+      }
+    }
+
+    return { profile_url: profileUrl }
   } catch (error) {
     console.error("Error uploading profile picture:", error)
     throw error

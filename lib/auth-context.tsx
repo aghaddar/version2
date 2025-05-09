@@ -19,6 +19,7 @@ interface AuthContextProps {
   register: (credentials: RegisterRequest) => Promise<boolean>
   logout: () => void
   updateUser: (userData: Partial<User>) => void
+  refreshUserData: () => Promise<void>
 }
 
 interface LoginRequest {
@@ -41,6 +42,7 @@ const AuthContext = createContext<AuthContextProps>({
   register: async () => false,
   logout: () => {},
   updateUser: () => {},
+  refreshUserData: async () => {},
 })
 
 export const useAuth = () => useContext(AuthContext)
@@ -49,6 +51,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
   const [token, setToken] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+
+  // Function to refresh user data from the backend
+  const refreshUserData = useCallback(async () => {
+    if (token && user?.userID) {
+      try {
+        console.log("Refreshing user data from backend...")
+        const userData = await getUserProfile(user.userID, token)
+        console.log("Refreshed user data:", userData)
+
+        // Update the user state with the new data
+        setUser((prevUser) => {
+          if (!prevUser) return null
+
+          const updatedUser = {
+            ...prevUser,
+            username: userData.username || prevUser.username,
+            avatarURL: userData.profile_url || userData.avatar_url || prevUser.avatarURL,
+          }
+
+          // Update localStorage
+          localStorage.setItem("auth_user", JSON.stringify(updatedUser))
+
+          return updatedUser
+        })
+      } catch (error) {
+        console.error("Failed to refresh user data:", error)
+      }
+    }
+  }, [token, user?.userID])
 
   useEffect(() => {
     const storedToken = localStorage.getItem("auth_token")
@@ -66,6 +97,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const parsedUser = JSON.parse(storedUser)
             setUser(parsedUser)
             console.log("Auth state: User loaded from localStorage", parsedUser)
+
+            // Refresh user data from backend after loading from localStorage
+            setTimeout(() => {
+              if (parsedUser.userID) {
+                getUserProfile(parsedUser.userID, storedToken)
+                  .then((userData: UserData) => {
+                    const refreshedUser = {
+                      ...parsedUser,
+                      username: userData.username || parsedUser.username,
+                      avatarURL: userData.profile_url || userData.avatar_url || parsedUser.avatarURL,
+                    }
+                    setUser(refreshedUser)
+                    localStorage.setItem("auth_user", JSON.stringify(refreshedUser))
+                    console.log("Auth state: User refreshed from API", refreshedUser)
+                  })
+                  .catch((err) => console.error("Failed to refresh user on init:", err))
+              }
+            }, 500)
           } catch (e) {
             console.error("Failed to parse stored user", e)
             localStorage.removeItem("auth_user")
@@ -80,7 +129,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                   userID: userData.user_id || userData.id || userId,
                   username: userData.username,
                   email: userData.email,
-                  avatarURL: userData.avatar_url || userData.profile_url,
+                  avatarURL: userData.profile_url || userData.avatar_url,
                 }
                 setUser(user)
                 localStorage.setItem("auth_user", JSON.stringify(user))
@@ -217,6 +266,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (!prevUser) return null
 
       const updatedUser = { ...prevUser, ...userData }
+      console.log("Updating user data:", updatedUser)
 
       // Update localStorage with the new user data
       localStorage.setItem("auth_user", JSON.stringify(updatedUser))
@@ -234,7 +284,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     login,
     register,
     logout,
-    updateUser, // Add this line
+    updateUser,
+    refreshUserData,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

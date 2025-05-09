@@ -32,6 +32,26 @@ export default function ProfilePage() {
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [showPasswordForm, setShowPasswordForm] = useState(false)
 
+  // Function to refresh user data
+  const refreshUserData = async () => {
+    if (isAuthenticated && token && user?.userID) {
+      try {
+        const userData = await getUserProfile(user.userID, token)
+        // Update the local user data with the fetched data
+        updateUser({
+          username: userData.username,
+          avatarURL: userData.profile_url || userData.avatar_url,
+        })
+
+        // Update the form state
+        setUsername(userData.username || "")
+        setProfileImage(userData.profile_url || userData.avatar_url || "/zoro-profile.png")
+      } catch (err) {
+        console.error("Failed to fetch user data:", err)
+      }
+    }
+  }
+
   // Update form with user data when available
   useEffect(() => {
     if (user) {
@@ -114,6 +134,7 @@ export default function ProfilePage() {
         try {
           const uploadResult = await uploadProfilePicture(token, selectedFile)
           profileUrl = uploadResult.profile_url
+          console.log("Profile picture uploaded successfully:", profileUrl)
         } catch (uploadErr) {
           console.error("Error uploading profile picture:", uploadErr)
           // Continue with username update even if image upload fails
@@ -132,6 +153,9 @@ export default function ProfilePage() {
         username,
         avatarURL: profileUrl,
       })
+
+      // Force a refresh of user data from the backend
+      await refreshUserData()
 
       toast({
         title: "Profile Updated",
@@ -181,6 +205,45 @@ export default function ProfilePage() {
       setPasswordError(err instanceof Error ? err.message : "Failed to change password")
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  // Add this function to the profile page component
+  const debugProfileData = async () => {
+    if (!token) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to debug profile data",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      const response = await fetch("/api/debug-profile", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch debug data: ${response.status}`)
+      }
+
+      const data = await response.json()
+      console.log("Debug profile data:", data)
+
+      toast({
+        title: "Debug Data",
+        description: "Check the console for debug information",
+      })
+    } catch (error) {
+      console.error("Debug error:", error)
+      toast({
+        title: "Debug Error",
+        description: error instanceof Error ? error.message : "Failed to debug profile data",
+        variant: "destructive",
+      })
     }
   }
 
@@ -355,6 +418,9 @@ export default function ProfilePage() {
             </Button>
           </form>
         </div>
+        <Button type="button" variant="outline" onClick={debugProfileData} className="mt-4">
+          Debug Profile Data
+        </Button>
       </div>
     </div>
   )

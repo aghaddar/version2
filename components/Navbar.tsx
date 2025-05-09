@@ -9,7 +9,6 @@ import { Search, Menu, X, Bell, User } from "lucide-react"
 import { usePathname, useRouter } from "next/navigation"
 import UserProfileDropdown from "./UserProfileDropdown"
 import { useAuth } from "@/lib/auth-context"
-import { getUserProfile } from "@/lib/auth-api" // Use the existing function instead of creating a new one
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -18,7 +17,7 @@ const Navbar = () => {
   const [searchQuery, setSearchQuery] = useState("")
   const pathname = usePathname()
   const router = useRouter()
-  const { user, isAuthenticated, isLoading, token, updateUser } = useAuth()
+  const { user, isAuthenticated, isLoading, refreshUserData } = useAuth()
 
   // Handle scroll effect
   useEffect(() => {
@@ -42,6 +41,13 @@ const Navbar = () => {
     setIsMenuOpen(false)
   }, [pathname])
 
+  // Add an effect to refresh user data when the navbar mounts
+  useEffect(() => {
+    if (isAuthenticated) {
+      refreshUserData().catch((err) => console.error("Failed to refresh user data:", err))
+    }
+  }, [isAuthenticated, refreshUserData])
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -63,27 +69,13 @@ const Navbar = () => {
     setIsProfileOpen(!isProfileOpen)
   }
 
-  // Add an effect to refresh user data when the navbar mounts
+  // Log the user data for debugging
   useEffect(() => {
-    const refreshUserData = async () => {
-      if (isAuthenticated && token && user?.userID) {
-        try {
-          const userData = await getUserProfile(user.userID, token)
-          // Update the local user data with the fetched data
-          if (updateUser) {
-            updateUser({
-              username: userData.username,
-              avatarURL: userData.profile_url || userData.avatar_url,
-            })
-          }
-        } catch (err) {
-          console.error("Failed to refresh user data:", err)
-        }
-      }
+    if (user) {
+      console.log("Navbar - Current user data:", user)
+      console.log("Navbar - Avatar URL:", user.avatarURL)
     }
-
-    refreshUserData()
-  }, [isAuthenticated, token, user?.userID, updateUser])
+  }, [user])
 
   return (
     <header
@@ -141,15 +133,34 @@ const Navbar = () => {
                   <div className="relative">
                     <button
                       onClick={toggleProfile}
-                      className="flex items-center justify-center w-8 h-8 rounded-full overflow-hidden border-2 border-purple-500"
+                      className="flex items-center justify-center w-8 h-8 rounded-full overflow-hidden border-2 border-purple-500 bg-purple-600"
                     >
-                      <Image
-                        src={user.avatarURL || "/zoro-profile.png"}
-                        alt={user.username}
-                        width={32}
-                        height={32}
-                        className="object-cover"
-                      />
+                      {user.avatarURL ? (
+                        <Image
+                          src={user.avatarURL || "/placeholder.svg"}
+                          alt={user.username}
+                          width={32}
+                          height={32}
+                          className="object-cover w-full h-full"
+                          onError={(e) => {
+                            // Fallback to default image if the avatar URL fails to load
+                            const target = e.target as HTMLImageElement
+                            target.style.display = "none"
+                            console.log("Image failed to load:", user.avatarURL)
+
+                            // Create a fallback with the first letter
+                            const parent = target.parentElement
+                            if (parent && !parent.querySelector(".fallback-letter")) {
+                              const fallbackDiv = document.createElement("div")
+                              fallbackDiv.className = "fallback-letter text-white text-lg font-bold"
+                              fallbackDiv.textContent = user.username.charAt(0).toUpperCase()
+                              parent.appendChild(fallbackDiv)
+                            }
+                          }}
+                        />
+                      ) : (
+                        <span className="text-white text-lg font-bold">{user.username.charAt(0).toUpperCase()}</span>
+                      )}
                     </button>
                     <UserProfileDropdown
                       isOpen={isProfileOpen}

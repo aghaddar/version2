@@ -5,6 +5,7 @@ import { MOCK_POPULAR_ANIME } from "./mock-data"
 // Define the base URL for the Consumet API
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000"
 const PROVIDER_PATH = "/anime/animepahe" // Consumet API path for animepahe provider
+const HLS_PROXY_URL = "https://hls.shrina.dev/proxy/" // Proxy service for HLS streams
 
 export interface AnimeResult {
   id: string | number
@@ -55,6 +56,23 @@ export function getEpisodeCount(anime: AnimeResult): number {
     return anime.totalEpisodes
   }
   return 0
+}
+
+// Helper function to proxy HLS URLs
+function proxyHlsUrl(url: string): string {
+  if (!url) return url
+
+  // If the URL is already using our proxy, don't double-proxy it
+  if (url.startsWith(HLS_PROXY_URL)) {
+    return url
+  }
+
+  // If it's an HLS stream, proxy it
+  if (url.includes(".m3u8")) {
+    return `${HLS_PROXY_URL}${encodeURIComponent(url)}`
+  }
+
+  return url
 }
 
 // Fetch function with timeout and error handling
@@ -307,37 +325,32 @@ export async function getFeaturedAnime(): Promise<AnimeResult[]> {
   }
 }
 
-// Update the getEpisodeSources function to fetch from Consumet API
+// Update the getEpisodeSources function to use the custom fallback URL
 export async function getEpisodeSources(episodeId: string): Promise<AnimeSource | null> {
   if (!episodeId) {
     console.error("getEpisodeSources called with empty episodeId")
     return null
   }
 
-  console.log(`Processing episode ID for Consumet API request: ${episodeId}`)
-
-  // Create fallback sources that will always work
+  // Create fallback sources with the custom URL - now using the proxy
   const fallbackSources = {
     headers: {
       Referer: "https://kwik.cx/",
     },
     sources: [
       {
-        url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8", // Public test HLS stream
+        url: proxyHlsUrl(
+          "https://ef.netmagcdn.com:2228/hls-playback/2f219e7a538f6b41763b2d81888f622d7d999109e4aabe2bf5ebc28de54bf1dd958dfbf6e445f1c6c88acf7779775503c4b0719ce97cec2e5731318a6003ea8a022f782127e4287da2f3917712e14a3b19dd5fcf47922975af8fd214e5d48ce11d1ed7c8611c8abf5324e5c767234b0c542b5d0ad5860297029d86704a4c106d082f5eb8864f1701f63fb4746e94d8a4/master.m3u8",
+        ),
         isM3U8: true,
         quality: "720p",
         isDub: false,
       },
-      {
-        url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
-        isM3U8: true,
-        quality: "480p",
-        isDub: false,
-      },
     ],
     subtitles: [],
-    download: `https://example.com/download/${episodeId}`,
   }
+
+  console.log(`Processing episode ID for Consumet API request: ${episodeId}`)
 
   try {
     // IMPORTANT: Properly encode the episodeId to handle slashes correctly
@@ -345,44 +358,89 @@ export async function getEpisodeSources(episodeId: string): Promise<AnimeSource 
 
     // Construct the URL for the Consumet API watch endpoint
     const url = `${API_BASE_URL}${PROVIDER_PATH}/watch?id=${encodedEpisodeId}`
-    console.log(`Fetching sources from Consumet API: ${url}`)
+    console.log(`Attempting to fetch sources from Consumet API: ${url}`)
 
-    // Make the request with appropriate headers
-    const response = await fetch(url, {
-      cache: "no-store",
-      headers: {
-        Accept: "application/json",
-      },
-    })
+    try {
+      // Make the request with appropriate headers
+      const response = await fetch(url, {
+        cache: "no-store",
+        headers: {
+          Accept: "application/json",
+        },
+      })
 
-    console.log(`Consumet API response status: ${response.status}`)
+      // Check if the response is OK
+      if (!response.ok) {
+        // Don't log as error for 500s, just info
+        console.log(`Consumet API returned ${response.status} ${response.statusText} for ${url}`)
+        console.log("Using fallback sources due to API response status")
+        return fallbackSources
+      }
 
-    // Check if the response is OK
-    if (!response.ok) {
-      console.error(`Consumet API error: ${response.status} ${response.statusText}`)
-      console.log("Using fallback sources due to API error")
+      // Try to parse the response as JSON
+      const data = await response.json()
+
+      // Validate the response structure
+      if (!data || !data.sources || !Array.isArray(data.sources) || data.sources.length === 0) {
+        console.log("Consumet API response missing sources array, using fallback")
+        return fallbackSources
+      }
+
+      // Proxy all HLS URLs in the sources
+      const proxiedSources = {
+        ...data,
+        sources: data.sources.map((source: any) => ({
+          ...source,
+          url: proxyHlsUrl(source.url),
+        })),
+      }
+
+      // Log the sources we found
+      console.log(
+        `Found ${proxiedSources.sources.length} sources from Consumet API:`,
+        proxiedSources.sources.map((s: { quality: string; isM3U8: boolean }) => ({
+          quality: s.quality,
+          isM3U8: s.isM3U8,
+        })),
+      )
+
+      return proxiedSources
+    } catch (fetchError: any) {
+      // Fix the TypeScript error by adding type annotation
+      console.log(
+        "Error fetching from Consumet API, using fallback sources:",
+        fetchError instanceof Error ? fetchError.message : "Unknown error",
+      )
       return fallbackSources
     }
-
-    // Try to parse the response as JSON
-    const data = await response.json()
-
-    // Validate the response structure
-    if (!data || !data.sources || !Array.isArray(data.sources) || data.sources.length === 0) {
-      console.error("Consumet API response missing sources array:", data)
-      return fallbackSources
-    }
-
-    // Log the sources we found
-    console.log(
-      `Found ${data.sources.length} sources from Consumet API:`,
-      data.sources.map((s: { quality: string; isM3U8: boolean }) => ({ quality: s.quality, isM3U8: s.isM3U8 })),
-    )
-
-    return data
   } catch (error: any) {
-    console.error("Error in getEpisodeSources:", error)
-    console.log("Using fallback sources due to exception")
+    // Fix the TypeScript error by adding type annotation
+    console.log(
+      "Exception in getEpisodeSources, using fallback sources:",
+      error instanceof Error ? error.message : "Unknown error",
+    )
     return fallbackSources
+  }
+}
+
+export async function fetchEpisodeLinks(animeId: string, episodeId: string) {
+  try {
+    const animeInfo = await getAnimeInfo(animeId)
+    if (!animeInfo) {
+      throw new Error("Anime info not found")
+    }
+
+    const episodeSources = await getEpisodeSources(episodeId)
+    if (!episodeSources) {
+      throw new Error("Episode sources not found")
+    }
+
+    return {
+      title: animeInfo.title,
+      sources: episodeSources.sources,
+    }
+  } catch (error) {
+    console.error("Error fetching episode links:", error)
+    throw error
   }
 }

@@ -26,9 +26,17 @@ interface VideoPlayerProps {
   poster?: string
   loading: boolean
   error: string | null
+  customStreamUrl?: string // Add this prop to accept a custom stream URL
 }
 
-const VideoPlayer = ({ videoSources, subtitles, poster, loading, error: initialError }: VideoPlayerProps) => {
+const VideoPlayer = ({
+  videoSources,
+  subtitles,
+  poster,
+  loading,
+  error: initialError,
+  customStreamUrl, // Accept the custom stream URL
+}: VideoPlayerProps) => {
   const [selectedQuality, setSelectedQuality] = useState<string | null>(null)
   const [isDubbed, setIsDubbed] = useState<boolean>(false)
   const [playerError, setPlayerError] = useState<string | null>(null)
@@ -44,6 +52,7 @@ const VideoPlayer = ({ videoSources, subtitles, poster, loading, error: initialE
   const [errorDetails, setErrorDetails] = useState<string | null>(null)
   const [attemptCount, setAttemptCount] = useState(0)
   const [usingHls, setUsingHls] = useState(false)
+  const [usingCustomStream, setUsingCustomStream] = useState(false)
 
   // Use a simple ref for the player element
   const playerRef = useRef<HTMLVideoElement>(null)
@@ -97,8 +106,8 @@ const VideoPlayer = ({ videoSources, subtitles, poster, loading, error: initialE
           // Log XHR requests for debugging
           addDebugLog(`HLS XHR request: ${url.substring(0, 100)}${url.length > 100 ? "..." : ""}`)
 
-          // If the URL is already proxied, don't proxy it again
-          if (url.includes("cors-proxy-shrina.btmd4n.easypanel.host")) {
+          // If the URL is already proxied or is a blob URL, don't proxy it again
+          if (url.includes("cors-proxy") || url.startsWith("blob:")) {
             return
           }
 
@@ -168,6 +177,19 @@ const VideoPlayer = ({ videoSources, subtitles, poster, loading, error: initialE
     }
   }
 
+  // Use custom stream URL if provided - this runs on component mount
+  useEffect(() => {
+    if (customStreamUrl) {
+      addDebugLog(`Using custom stream URL: ${customStreamUrl}`)
+      setUsingCustomStream(true)
+      setCurrentSource(customStreamUrl)
+      setDebugInfo(`Using custom stream: ${customStreamUrl.substring(0, 50)}...`)
+
+      // Initialize HLS for the custom stream
+      initHls(customStreamUrl)
+    }
+  }, [customStreamUrl])
+
   // Initialize subtitles
   useEffect(() => {
     if (subtitles && subtitles.length > 0) {
@@ -200,6 +222,12 @@ const VideoPlayer = ({ videoSources, subtitles, poster, loading, error: initialE
   const initializeWithSources = (sources: VideoSource[]) => {
     if (!sources || sources.length === 0) {
       addDebugLog("No sources available for initialization")
+      return
+    }
+
+    // Skip initialization if we're using a custom stream
+    if (usingCustomStream) {
+      addDebugLog("Using custom stream, skipping source initialization")
       return
     }
 
@@ -263,17 +291,30 @@ const VideoPlayer = ({ videoSources, subtitles, poster, loading, error: initialE
   useEffect(() => {
     addDebugLog(`videoSources changed: ${videoSources ? videoSources.length : 0} sources`)
 
+    // Skip if we're using a custom stream
+    if (usingCustomStream) {
+      addDebugLog("Using custom stream, skipping source initialization")
+      return
+    }
+
     if (videoSources && videoSources.length > 0) {
       initializeWithSources(videoSources)
+    } else if (customStreamUrl) {
+      // If no video sources but we have a custom URL, use that
+      addDebugLog("No video sources received, using custom stream URL")
+      setUsingCustomStream(true)
+      setCurrentSource(customStreamUrl)
+      setDebugInfo(`Using custom stream: ${customStreamUrl.substring(0, 50)}...`)
+      initHls(customStreamUrl)
     } else {
-      addDebugLog("No video sources received")
+      addDebugLog("No video sources received and no custom stream URL")
       // Reset state when no sources are available
       setSourcesInitialized(false)
       sourceRef.current = null
       setSelectedQuality(null)
       setCurrentSource(null)
     }
-  }, [videoSources])
+  }, [videoSources, usingCustomStream, customStreamUrl])
 
   // Check if dubbed versions are available
   const hasDubbed = videoSources ? videoSources.some((s) => s.isDub) : false
@@ -281,6 +322,7 @@ const VideoPlayer = ({ videoSources, subtitles, poster, loading, error: initialE
   // Play test stream when all else fails
   const playTestStream = () => {
     setUsingTestStream(true)
+    setUsingCustomStream(false)
     setIsLoading(false)
     setPlayerError(null)
     setErrorDetails(null)
@@ -301,6 +343,7 @@ const VideoPlayer = ({ videoSources, subtitles, poster, loading, error: initialE
   // Play direct MP4 fallback
   const playDirectMp4Fallback = () => {
     setUsingTestStream(true)
+    setUsingCustomStream(false)
     setIsLoading(false)
     setPlayerError(null)
     setErrorDetails(null)
@@ -330,6 +373,7 @@ const VideoPlayer = ({ videoSources, subtitles, poster, loading, error: initialE
   // Try to play a source directly (without proxy)
   const playDirectSource = () => {
     setUsingTestStream(true)
+    setUsingCustomStream(false)
     setIsLoading(false)
     setPlayerError(null)
     setErrorDetails(null)
@@ -358,6 +402,7 @@ const VideoPlayer = ({ videoSources, subtitles, poster, loading, error: initialE
   // Try using internal proxy
   const useInternalProxy = () => {
     setUsingTestStream(true)
+    setUsingCustomStream(false)
     setIsLoading(false)
     setPlayerError(null)
     setErrorDetails(null)
@@ -410,6 +455,7 @@ const VideoPlayer = ({ videoSources, subtitles, poster, loading, error: initialE
   // Try using a different proxy
   const useAlternativeProxy = () => {
     setUsingTestStream(true)
+    setUsingCustomStream(false)
     setIsLoading(false)
     setPlayerError(null)
     setErrorDetails(null)
@@ -462,8 +508,8 @@ const VideoPlayer = ({ videoSources, subtitles, poster, loading, error: initialE
 
   // Update source when quality or language changes
   useEffect(() => {
-    // Don't change anything if we're using a test stream
-    if (usingTestStream) return
+    // Don't change anything if we're using a test stream or custom stream
+    if (usingTestStream || usingCustomStream) return
 
     // Don't do anything if sources haven't been initialized yet
     if (!sourcesInitialized) return
@@ -579,7 +625,7 @@ const VideoPlayer = ({ videoSources, subtitles, poster, loading, error: initialE
         playerRef.current.src = proxiedUrl
       }
     }
-  }, [selectedQuality, isDubbed, sourcesInitialized, usingTestStream, videoSources])
+  }, [selectedQuality, isDubbed, sourcesInitialized, usingTestStream, usingCustomStream, videoSources])
 
   // Update subtitle when selection changes
   const handleSubtitleChange = (lang: string) => {
@@ -690,6 +736,24 @@ const VideoPlayer = ({ videoSources, subtitles, poster, loading, error: initialE
     setShowDebugPanel(!showDebugPanel)
   }
 
+  // Button to use the custom stream URL
+  const useCustomStream = () => {
+    if (customStreamUrl) {
+      setUsingCustomStream(true)
+      setUsingTestStream(false)
+      setIsLoading(false)
+      setPlayerError(null)
+      setErrorDetails(null)
+      setAttemptCount(0)
+
+      setCurrentSource(customStreamUrl)
+      setDebugInfo(`Using custom stream: ${customStreamUrl.substring(0, 50)}...`)
+
+      // Initialize HLS for the custom stream
+      initHls(customStreamUrl)
+    }
+  }
+
   return (
     <div
       className="relative w-full aspect-video bg-gray-900 mb-6 rounded-lg overflow-hidden"
@@ -751,6 +815,16 @@ const VideoPlayer = ({ videoSources, subtitles, poster, loading, error: initialE
                 <RefreshCw size={16} className="mr-2" />
                 Retry
               </button>
+              {customStreamUrl && (
+                <button
+                  onClick={useCustomStream}
+                  className="px-4 py-2 bg-green-600 rounded-md hover:bg-green-700 text-white flex items-center"
+                  id="custom-stream-button"
+                >
+                  <Play size={16} className="mr-2" />
+                  Use Custom Stream
+                </button>
+              )}
               <button
                 onClick={playTestStream}
                 className="px-4 py-2 bg-gray-700 rounded-md hover:bg-gray-600 text-white flex items-center"
@@ -865,7 +939,7 @@ const VideoPlayer = ({ videoSources, subtitles, poster, loading, error: initialE
           </video>
 
           {/* Quality, language, and subtitle controls */}
-          {showControls && !usingTestStream && (
+          {showControls && !usingTestStream && !usingCustomStream && (
             <div className="absolute top-4 right-4 bg-black/70 rounded-md p-2 flex flex-col gap-2 z-10">
               <div className="flex items-center justify-between mb-1">
                 <Settings size={16} className="text-gray-300 mr-2" />
