@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
 import { User, Mail, Save, Upload, Key, AlertCircle } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
-import { updateUserProfile, uploadProfilePicture, changePassword } from "@/lib/auth-api"
+import { updateUserProfile, uploadProfilePicture, changePassword, getUserProfile } from "@/lib/auth-api"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export default function ProfilePage() {
@@ -39,6 +39,30 @@ export default function ProfilePage() {
       setProfileImage(user.avatarURL || "/zoro-profile.png")
     }
   }, [user])
+
+  // Add useEffect to refresh user data when the page loads
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (isAuthenticated && token && user?.userID) {
+        try {
+          const userData = await getUserProfile(user.userID, token)
+          // Update the local user data with the fetched data
+          updateUser({
+            username: userData.username,
+            avatarURL: userData.profile_url || userData.avatar_url,
+          })
+
+          // Update the form state
+          setUsername(userData.username || "")
+          setProfileImage(userData.profile_url || userData.avatar_url || "/zoro-profile.png")
+        } catch (err) {
+          console.error("Failed to fetch user data:", err)
+        }
+      }
+    }
+
+    fetchUserData()
+  }, [isAuthenticated, token, user?.userID])
 
   // Handle profile image selection
   const handleImageClick = () => {

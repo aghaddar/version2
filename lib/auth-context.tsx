@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, type ReactNode, useCallback } from "react"
 import { loginUser, registerUser, getUserProfile, parseJwt, type UserData } from "./auth-api"
 
 interface User {
@@ -211,29 +211,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem("auth_user")
   }
 
-  // Function to update user data after profile changes
-  const updateUser = (userData: Partial<User>) => {
-    if (user) {
-      const updatedUser = { ...user, ...userData }
-      setUser(updatedUser)
+  // Add this function to update the user data
+  const updateUser = useCallback((userData: Partial<User>) => {
+    setUser((prevUser) => {
+      if (!prevUser) return null
+
+      const updatedUser = { ...prevUser, ...userData }
+
+      // Update localStorage with the new user data
       localStorage.setItem("auth_user", JSON.stringify(updatedUser))
-    }
+
+      return updatedUser
+    })
+  }, [])
+
+  // Include updateUser in the context value
+  const value: AuthContextProps = {
+    user,
+    token,
+    isAuthenticated: !!user && !!token,
+    isLoading,
+    login,
+    register,
+    logout,
+    updateUser, // Add this line
   }
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        token,
-        isAuthenticated: !!user && !!token,
-        isLoading,
-        login,
-        register,
-        logout,
-        updateUser,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  )
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

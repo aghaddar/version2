@@ -9,6 +9,7 @@ import { Search, Menu, X, Bell, User } from "lucide-react"
 import { usePathname, useRouter } from "next/navigation"
 import UserProfileDropdown from "./UserProfileDropdown"
 import { useAuth } from "@/lib/auth-context"
+import { getUserProfile } from "@/lib/auth-api" // Use the existing function instead of creating a new one
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -17,7 +18,7 @@ const Navbar = () => {
   const [searchQuery, setSearchQuery] = useState("")
   const pathname = usePathname()
   const router = useRouter()
-  const { user, isAuthenticated, isLoading } = useAuth()
+  const { user, isAuthenticated, isLoading, token, updateUser } = useAuth()
 
   // Handle scroll effect
   useEffect(() => {
@@ -61,6 +62,28 @@ const Navbar = () => {
   const toggleProfile = () => {
     setIsProfileOpen(!isProfileOpen)
   }
+
+  // Add an effect to refresh user data when the navbar mounts
+  useEffect(() => {
+    const refreshUserData = async () => {
+      if (isAuthenticated && token && user?.userID) {
+        try {
+          const userData = await getUserProfile(user.userID, token)
+          // Update the local user data with the fetched data
+          if (updateUser) {
+            updateUser({
+              username: userData.username,
+              avatarURL: userData.profile_url || userData.avatar_url,
+            })
+          }
+        } catch (err) {
+          console.error("Failed to refresh user data:", err)
+        }
+      }
+    }
+
+    refreshUserData()
+  }, [isAuthenticated, token, user?.userID, updateUser])
 
   return (
     <header
