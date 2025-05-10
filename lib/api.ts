@@ -4,13 +4,13 @@ import { MOCK_POPULAR_ANIME } from "./mock-data"
 
 // Define the base URL for the Consumet API
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000"
-const PROVIDER_PATH = "/anime/zoro" // Changed from animepahe to zoro
-const HLS_PROXY_URL = "https://hls.shrina.dev/proxy/" // Proxy service for HLS streams
+const PROVIDER_PATH = "/anime/zoro" // Using Zoro provider
+const CORS_PROXY_URL = "https://cors-proxy-shrina.btmd4n.easypanel.host/proxy?url=" // External CORS proxy
 
 export interface AnimeResult {
   id: string | number
   title: string
-  image?: string // Make image optional to match the definition in lib/types.ts
+  image?: string
   releaseDate?: string | number
   type?: string
   description?: string
@@ -63,13 +63,13 @@ function proxyHlsUrl(url: string): string {
   if (!url) return url
 
   // If the URL is already using our proxy, don't double-proxy it
-  if (url.startsWith(HLS_PROXY_URL)) {
+  if (url.includes(CORS_PROXY_URL)) {
     return url
   }
 
   // If it's an HLS stream, proxy it
   if (url.includes(".m3u8")) {
-    return `${HLS_PROXY_URL}${encodeURIComponent(url)}`
+    return `${CORS_PROXY_URL}${encodeURIComponent(url)}`
   }
 
   return url
@@ -363,14 +363,14 @@ export async function getFeaturedAnime(): Promise<AnimeResult[]> {
   }
 }
 
-// Update the getEpisodeSources function to use the custom fallback URL
+// Update the getEpisodeSources function to use the meta/anilist endpoint for watch
 export async function getEpisodeSources(episodeId: string): Promise<AnimeSource | null> {
   if (!episodeId) {
     console.error("getEpisodeSources called with empty episodeId")
     return null
   }
 
-  // Create fallback sources with the custom URL - now using the proxy
+  // Create fallback sources with the custom URL - now using the CORS proxy
   const fallbackSources = {
     headers: {
       Referer: "https://zoro.to/",
@@ -395,8 +395,8 @@ export async function getEpisodeSources(episodeId: string): Promise<AnimeSource 
     const encodedEpisodeId = encodeURIComponent(episodeId)
 
     // Construct the URL for the Consumet API watch endpoint
-    // Zoro uses a different endpoint format for watching
-    const url = `${API_BASE_URL}${PROVIDER_PATH}/watch?episodeId=${encodedEpisodeId}`
+    // Use the meta/anilist endpoint for watch
+    const url = `${API_BASE_URL}/meta/anilist/watch/${encodedEpisodeId}?provider=zoro`
     console.log(`Attempting to fetch sources from Consumet API: ${url}`)
 
     try {

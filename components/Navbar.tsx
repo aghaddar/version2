@@ -15,9 +15,15 @@ const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
+  const [isMounted, setIsMounted] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
   const { user, isAuthenticated, isLoading, refreshUserData } = useAuth()
+
+  // Set mounted state to prevent hydration mismatch
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   // Handle scroll effect
   useEffect(() => {
@@ -77,6 +83,23 @@ const Navbar = () => {
     }
   }, [user])
 
+  // If not mounted yet, return null or a simple placeholder to prevent hydration mismatch
+  if (!isMounted) {
+    return (
+      <header className="fixed top-0 left-0 right-0 z-[100] bg-black/90">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between h-16">
+            <div className="w-[120px] h-[30px]"></div>
+            <div className="hidden md:block w-[200px]"></div>
+            <div className="flex items-center space-x-4">
+              <div className="w-[40px]"></div>
+            </div>
+          </div>
+        </div>
+      </header>
+    )
+  }
+
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-300 ${
@@ -116,13 +139,12 @@ const Navbar = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="bg-gray-800 text-white text-sm rounded-full py-1 px-4 pl-9 w-40 lg:w-56 focus:outline-none focus:ring-1 focus:ring-purple-500"
-                suppressHydrationWarning
               />
               <Search className="absolute left-2.5 top-1.5 w-4 h-4 text-gray-400" />
             </form>
 
             {/* Notifications */}
-            <button className="text-white hover:text-purple-400 transition-colors" suppressHydrationWarning>
+            <button className="text-white hover:text-purple-400 transition-colors">
               <Bell className="w-5 h-5" />
             </button>
 

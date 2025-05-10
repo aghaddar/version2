@@ -2,13 +2,30 @@
 
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { getAnimeInfo, getEpisodeSources, type AnimeResult } from "@/lib/api"
+import { getAnimeInfo, type AnimeResult } from "@/lib/api"
 import VideoPlayerVidstack from "@/components/VideoPlayerVidstack"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Share2 } from "lucide-react"
-import SocialShareMenu from "@/components/SocialShareMenu"
-import EpisodePagination from "@/components/EpisodePagination"
 import { useToast } from "@/hooks/use-toast"
+import EpisodePagination from "@/components/EpisodePagination"
+import SocialShareMenu from "@/components/SocialShareMenu"
+
+// Define types for the API response
+interface VideoSource {
+  url: string
+  quality: string
+  isM3U8: boolean
+}
+
+interface Subtitle {
+  url: string
+  lang: string
+}
+
+interface VideoData {
+  sources: VideoSource[]
+  subtitles: Subtitle[]
+}
 
 export default function WatchPage() {
   const params = useParams()
@@ -18,18 +35,43 @@ export default function WatchPage() {
   const episodeId = Array.isArray(params.episodeId) ? params.episodeId.join("/") : (params.episodeId as string)
 
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
+  const [subtitleUrl, setSubtitleUrl] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [title, setTitle] = useState<string>("")
   const [animeInfo, setAnimeInfo] = useState<AnimeResult | null>(null)
   const [currentEpisodeNumber, setCurrentEpisodeNumber] = useState<number | null>(null)
+  const [availableSources, setAvailableSources] = useState<VideoSource[]>([])
 
-  // Custom stream URL as primary source
-  const primaryStreamUrl =
-    "https://hls.shrina.dev/proxy/" +
+  // Use the external CORS proxy
+  const CORS_PROXY_URL = "https://cors-proxy-shrina.btmd4n.easypanel.host/proxy?url="
+
+  // Custom stream URL as fallback - now using the external CORS proxy
+  const fallbackStreamUrl =
+    CORS_PROXY_URL +
     encodeURIComponent(
       "https://ef.netmagcdn.com:2228/hls-playback/2f219e7a538f6b41763b2d81888f622d7d999109e4aabe2bf5ebc28de54bf1dd958dfbf6e445f1c6c88acf7779775503c4b0719ce97cec2e5731318a6003ea8a022f782127e4287da2f3917712e14a3b19dd5fcf47922975af8fd214e5d48ce11d1ed7c8611c8abf5324e5c767234b0c542b5d0ad5860297029d86704a4c106d082f5eb8864f1701f63fb4746e94d8a4/master.m3u8",
     )
+
+  // Backend URL for API requests - use the same base URL as in lib/api.ts
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000"
+
+  // Function to proxy HLS URLs through the CORS proxy
+  const proxyHlsUrl = (url: string): string => {
+    if (!url) return url
+
+    // If the URL is already using our proxy, don't double-proxy it
+    if (url.includes(CORS_PROXY_URL)) {
+      return url
+    }
+
+    // If it's an HLS stream, proxy it
+    if (url.includes(".m3u8")) {
+      return `${CORS_PROXY_URL}${encodeURIComponent(url)}`
+    }
+
+    return url
+  }
 
   useEffect(() => {
     async function loadEpisode() {
@@ -63,39 +105,77 @@ export default function WatchPage() {
         // Set the title regardless of source availability
         setTitle(`${info?.title || "Anime"} - Episode ${currentEpisodeNumber || ""}`)
 
-        // Always set the primary stream URL first
-        setVideoUrl(null) // We'll use the primary stream directly in the player
+        // Set fallback stream immediately to ensure we have something to play
+        setVideoUrl(fallbackStreamUrl)
 
-        // Try to fetch episode sources as a backup
+        // Fetch video sources using our custom proxy API
         try {
-          const episodeSources = await getEpisodeSources(episodeId)
+          // Use the same base URL format as in lib/api.ts
+          // For Zoro, we need to use the meta/anilist endpoint
+          const targetUrl = `${API_BASE_URL}/meta/anilist/watch/${episodeId}?provider=zoro`
+          console.log(`Fetching video sources from: ${targetUrl}`)
 
-          if (episodeSources && episodeSources.sources && episodeSources.sources.length > 0) {
-            // Find the highest quality source as a backup
-            const sources = episodeSources.sources.sort((a, b) => {
+          // Use direct fetch since we're using localhost
+          const response = await fetch(targetUrl)
+
+          if (!response.ok) {
+            throw new Error(`API returned ${response.status}`)
+          }
+
+          const data = await response.json()
+
+          if (data?.sources?.length > 0) {
+            // Process sources and proxy all HLS URLs through the CORS proxy
+            const processedSources = data.sources.map((source: VideoSource) => ({
+              ...source,
+              url: proxyHlsUrl(source.url),
+            }))
+
+            // Sort sources by quality (highest first)
+            const sortedSources = [...processedSources].sort((a, b) => {
               const qualityA = Number.parseInt(a.quality.replace("p", "")) || 0
               const qualityB = Number.parseInt(b.quality.replace("p", "")) || 0
               return qualityB - qualityA
             })
 
-            // Store the API source as a backup
-            console.log("Found API source as backup:", sources[0].url)
+            setAvailableSources(sortedSources)
+            console.log(
+              "Available sources:",
+              sortedSources.map((s) => `${s.quality}: ${s.url.substring(0, 50)}...`),
+            )
+
+            // Use the highest quality source
+            setVideoUrl(sortedSources[0].url)
+            console.log(`Using source: ${sortedSources[0].url.substring(0, 50)}...`)
           } else {
-            console.log("No valid API sources found, using only primary stream")
+            console.log("No sources found in API response, using fallback")
+          }
+
+          // Handle subtitles
+          if (data?.subtitles?.length > 0) {
+            console.log(`Found ${data.subtitles.length} subtitles`)
+            const engSubtitle = data.subtitles.find((s: Subtitle) => s.lang.toLowerCase().includes("english"))
+            if (engSubtitle) {
+              console.log(`Using English subtitle: ${engSubtitle.url}`)
+              setSubtitleUrl(engSubtitle.url)
+            }
           }
         } catch (sourceError) {
-          console.log("Error fetching episode sources, using only primary stream:", sourceError)
+          console.error("Error fetching episode sources:", sourceError)
+          console.log("Continuing with fallback stream")
+          // We're already using fallback stream, so just log the error
         }
       } catch (err) {
-        console.log("Error loading episode info, using only primary stream:", err)
-        setError("Failed to load episode data. Using primary stream.")
+        console.log("Error loading episode info:", err)
+        setError("Failed to load episode data.")
+        setVideoUrl(fallbackStreamUrl)
       } finally {
         setIsLoading(false)
       }
     }
 
     loadEpisode()
-  }, [animeId, episodeId, currentEpisodeNumber])
+  }, [animeId, episodeId, currentEpisodeNumber, API_BASE_URL, fallbackStreamUrl, CORS_PROXY_URL])
 
   const handleBack = () => {
     router.push(`/anime/${animeId}`)
@@ -125,8 +205,20 @@ export default function WatchPage() {
     toast({
       variant: "destructive",
       title: "Playback Error",
-      description: "There was an error playing this video. Using alternative stream.",
+      description: "There was an error playing this video. Using fallback stream.",
     })
+    setVideoUrl(fallbackStreamUrl)
+  }
+
+  const handleQualityChange = (quality: string) => {
+    const source = availableSources.find((s) => s.quality === quality)
+    if (source) {
+      setVideoUrl(source.url) // URL is already proxied
+      toast({
+        title: "Quality Changed",
+        description: `Switched to ${quality} quality`,
+      })
+    }
   }
 
   // Ensure episodes is an array before passing to EpisodePagination
@@ -158,7 +250,8 @@ export default function WatchPage() {
         ) : (
           <VideoPlayerVidstack
             src={videoUrl || undefined}
-            fallbackStreamUrl={primaryStreamUrl}
+            subtitleUrl={subtitleUrl || undefined}
+            fallbackStreamUrl={fallbackStreamUrl}
             title={title}
             autoPlay={true}
             onError={handleVideoError}
@@ -169,6 +262,26 @@ export default function WatchPage() {
 
       <div className="mt-4">
         <h1 className="text-xl font-bold">{title}</h1>
+
+        {/* Quality selector */}
+        {availableSources.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            <span className="text-sm font-medium">Quality:</span>
+            <div className="flex flex-wrap gap-2">
+              {availableSources.map((source) => (
+                <Button
+                  key={`quality-${source.quality}`}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleQualityChange(source.quality)}
+                  className="text-xs"
+                >
+                  {source.quality}
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="mt-6">
