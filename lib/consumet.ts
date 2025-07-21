@@ -2,7 +2,7 @@
 
 export async function getAnimeInfo(id: string) {
   // Construct the full URL with the correct path for Consumet API
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000"
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://api-consumet-nu.vercel.app/"
   const url = `${API_BASE_URL}/anime/animepahe/info/${encodeURIComponent(id)}`
 
   try {
@@ -21,7 +21,7 @@ export async function getAnimeInfo(id: string) {
 }
 
 export async function getEpisodeSources(episodeId: string) {
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000"
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://api-consumet-nu.vercel.app/"
   const url = `${API_BASE_URL}/anime/animepahe/watch?id=${encodeURIComponent(episodeId)}`
 
   try {

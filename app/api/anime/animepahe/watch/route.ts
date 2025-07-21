@@ -24,7 +24,7 @@ export async function GET(request: Request) {
     // Forward the request to the actual Consumet API
     try {
       // Use the Zoro endpoint instead of animepahe
-      const consumetApiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000/anime/zoro"
+      const consumetApiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "https://api-consumet-nu.vercel.app/anime/zoro"
       const apiUrl = `${consumetApiUrl}/watch?episodeId=${encodeURIComponent(episodeId)}`
 
       console.log(`Forwarding request to Consumet API: ${apiUrl}`)

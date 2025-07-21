@@ -10,7 +10,7 @@ This document provides details about the API endpoints used in the AnimePlus app
 The application uses the following environment variables to configure API URLs:
 
 \`\`\`
-NEXT_PUBLIC_API_BASE_URL=http://localhost:3000  # Consumet API
+NEXT_PUBLIC_API_BASE_URL=https://api-consumet-nu.vercel.app/  # Consumet API
 NEXT_PUBLIC_BACKEND_URL=http://localhost:3001   # Backend API
 \`\`\`
 
@@ -20,7 +20,7 @@ NEXT_PUBLIC_BACKEND_URL=http://localhost:3001   # Backend API
 
 The Consumet API provides anime data including search results, anime details, episodes, and video sources.
 
-Base URL: `http://localhost:3000`
+Base URL: `https://api-consumet-nu.vercel.app/`
 
 ### Search Anime
 
@@ -466,7 +466,7 @@ For local development and testing:
 
 2. Use the provided `.env.local` file to configure the API URLs:
    \`\`\`
-   NEXT_PUBLIC_API_BASE_URL=http://localhost:3000
+   NEXT_PUBLIC_API_BASE_URL=https://api-consumet-nu.vercel.app/
    NEXT_PUBLIC_BACKEND_URL=http://localhost:3001
    \`\`\`
 

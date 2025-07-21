@@ -3,9 +3,14 @@
 import { MOCK_POPULAR_ANIME } from "./mock-data"
 
 // Define the base URL for the Consumet API
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000"
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL || "https://api-consumet-nu.vercel.app").replace(/\/$/, "")
 const PROVIDER_PATH = "/anime/zoro" // Using Zoro provider
 const CORS_PROXY_URL = "https://hls.ciphertv.dev/proxy?url=" // New external CORS proxy
+const HARDCODED_GENRES = [
+  "Action", "Adventure", "Comedy", "Drama", "Fantasy",
+  "Horror", "Mystery", "Romance", "Sci-Fi", "Slice of Life",
+  "Sports", "Supernatural", "Thriller"
+]
 
 export interface AnimeResult {
   id: string | number
@@ -488,4 +493,39 @@ export async function fetchEpisodeLinks(animeId: string, episodeId: string) {
     console.error("Error fetching episode links:", error)
     throw error
   }
+}
+
+export async function getZoroGenreList(): Promise<string[]> {
+  const zoroUrl = `${API_BASE_URL}${PROVIDER_PATH}/genre/list`
+  const anilistUrl = "https://api.consumet.org/meta/anilist/genres"
+
+  try {
+    console.log("Trying to fetch genre list from Zoro:", zoroUrl)
+    const response = await fetch(zoroUrl)
+    if (response.ok) {
+      const data = await response.json()
+      if (Array.isArray(data)) return data
+      if (data && Array.isArray(data.genres)) return data.genres
+    }
+    console.warn("Zoro genre list format unexpected or failed, falling back to Anilist...")
+  } catch (error: any) {
+    console.warn("Failed to fetch from Zoro genres:", error?.message || error)
+  }
+
+  try {
+    console.log("Trying to fetch genre list from Anilist:", anilistUrl)
+    const response = await fetch(anilistUrl)
+    if (!response.ok) throw new Error(`Anilist API failed: ${response.statusText}`)
+
+    const data = await response.json()
+    if (Array.isArray(data)) return data
+    if (data && Array.isArray(data.genres)) return data.genres
+
+    console.warn("Anilist genre list format unexpected, falling back to hardcoded genres...")
+  } catch (error: any) {
+    console.warn("Failed to fetch from Anilist genres:", error?.message || error)
+  }
+
+  console.log("Using hardcoded genre list as fallback.")
+  return HARDCODED_GENRES
 }

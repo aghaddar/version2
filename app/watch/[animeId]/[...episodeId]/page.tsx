@@ -54,7 +54,7 @@ export default function WatchPage() {
     )
 
   // Backend URL for API requests - use the same base URL as in lib/api.ts
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000"
+  const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL || "https://api-consumet-nu.vercel.app").replace(/\/$/, "")
 
   // Function to proxy HLS URLs through the CORS proxy
   const proxyHlsUrl = (url: string): string => {
