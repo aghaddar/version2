@@ -138,7 +138,7 @@ export default function AnimePageClient({ animeInfo, relatedAnime }: AnimePageCl
             {activeTab === "overview" && (
               <div>
                 <div className="bg-gray-900 rounded-lg p-6 mb-6">
-                  <h2 className="text-xl font-semibold mb-4">Synopsis</h2>
+                  <h2 className="text-xl font-semibold mb-4">Description</h2>
                   <p className="text-gray-300 whitespace-pre-line">
                     {animeInfo.description || "No description available."}
                   </p>

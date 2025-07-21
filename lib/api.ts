@@ -5,7 +5,7 @@ import { MOCK_POPULAR_ANIME } from "./mock-data"
 // Define the base URL for the Consumet API
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000"
 const PROVIDER_PATH = "/anime/zoro" // Using Zoro provider
-const CORS_PROXY_URL = "https://cors-proxy-shrina.btmd4n.easypanel.host/proxy?url=" // External CORS proxy
+const CORS_PROXY_URL = "https://hls.ciphertv.dev/proxy?url=" // New external CORS proxy
 
 export interface AnimeResult {
   id: string | number

@@ -2,8 +2,8 @@ import { type NextRequest, NextResponse } from "next/server"
 
 export const dynamic = "force-dynamic" // Make sure this route is not cached
 
-// Use the external CORS proxy
-const CORS_PROXY_URL = "https://cors-proxy-shrina.btmd4n.easypanel.host/proxy?url="
+// Use the new external CORS proxy
+const CORS_PROXY_URL = "https://hls.ciphertv.dev/proxy?url="
 
 // Function to rewrite all URLs in M3U8 files to go through our proxy
 function rewriteM3U8(content: string, originalUrl: string): string {

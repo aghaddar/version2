@@ -43,10 +43,10 @@ export default function WatchPage() {
   const [currentEpisodeNumber, setCurrentEpisodeNumber] = useState<number | null>(null)
   const [availableSources, setAvailableSources] = useState<VideoSource[]>([])
 
-  // Use the external CORS proxy
-  const CORS_PROXY_URL = "https://cors-proxy-shrina.btmd4n.easypanel.host/proxy?url="
+  // Use the new external CORS proxy
+  const CORS_PROXY_URL = "https://hls.ciphertv.dev/proxy?url="
 
-  // Custom stream URL as fallback - now using the external CORS proxy
+  // Custom stream URL as fallback - now using the new external CORS proxy
   const fallbackStreamUrl =
     CORS_PROXY_URL +
     encodeURIComponent(

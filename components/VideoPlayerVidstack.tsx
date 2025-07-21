@@ -36,8 +36,8 @@ export default function VideoPlayerVidstack({
   const { toast } = useToast()
   const hlsRef = useRef<Hls | null>(null)
 
-  // Use the external CORS proxy
-  const CORS_PROXY_URL = "https://cors-proxy-shrina.btmd4n.easypanel.host/proxy?url="
+  // Use the new external CORS proxy
+  const CORS_PROXY_URL = "https://hls.ciphertv.dev/proxy?url="
 
   // Log for debugging
   const logDebug = (message: string, ...args: any[]) => {
