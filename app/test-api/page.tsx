@@ -8,7 +8,7 @@ export default function TestApiPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001"
+  const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://0.0.0.0:3001"
 
   const testConnection = async () => {
     setLoading(true)

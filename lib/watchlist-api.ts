@@ -1,7 +1,7 @@
 import type { AnimeResult } from "./types"
 
 // Define the backend URL
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001"
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://0.0.0.0:3001"
 
 // Define interfaces for the watchlist API
 export interface WatchlistItem {

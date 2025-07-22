@@ -38,8 +38,8 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900">
-      <div className="bg-gray-800 p-8 rounded-lg shadow-lg w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-gray-900 bg-cover bg-center" style={{ backgroundImage: 'url(/login-background.jpg)' }}>
+      <div className="bg-gray-800 p-8 rounded-2xl shadow-lg w-full max-w-md">
         <h1 className="text-2xl font-bold mb-6 text-center text-white">Login</h1>
 
         {error && <div className="bg-red-900/30 border border-red-500 text-red-200 p-3 rounded-md mb-4">{error}</div>}
@@ -54,7 +54,7 @@ export default function LoginPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-full text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
               required
             />
           </div>
@@ -68,7 +68,7 @@ export default function LoginPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-full text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
               required
             />
           </div>
@@ -84,7 +84,7 @@ export default function LoginPage() {
           <Button
             type="submit"
             disabled={isLoading}
-            className="w-full py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-md transition duration-200 flex justify-center"
+            className="w-full py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-full transition duration-200 flex justify-center"
           >
             {isLoading ? (
               <>

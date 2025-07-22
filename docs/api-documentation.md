@@ -11,7 +11,7 @@ The application uses the following environment variables to configure API URLs:
 
 \`\`\`
 NEXT_PUBLIC_API_BASE_URL=https://api-consumet-nu.vercel.app/  # Consumet API
-NEXT_PUBLIC_BACKEND_URL=http://localhost:3001   # Backend API
+NEXT_PUBLIC_BACKEND_URL=http://192.168.0.104:3001   # Backend API
 \`\`\`
 
 ---
@@ -132,7 +132,7 @@ const sources = await fetch(`${API_BASE_URL}/watch?episodeId=demon-slayer-episod
 
 The Backend API handles user authentication and comments functionality.
 
-Base URL: `http://localhost:3001`
+Base URL: `http://192.168.0.104:3001`
 
 ### Authentication
 
@@ -467,7 +467,7 @@ For local development and testing:
 2. Use the provided `.env.local` file to configure the API URLs:
    \`\`\`
    NEXT_PUBLIC_API_BASE_URL=https://api-consumet-nu.vercel.app/
-   NEXT_PUBLIC_BACKEND_URL=http://localhost:3001
+   NEXT_PUBLIC_BACKEND_URL=http://192.168.0.104:3001
    \`\`\`
 
 ### API Timeouts

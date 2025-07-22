@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 
 export async function GET(request: NextRequest) {
-  const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001"
+  const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://0.0.0.0:3001"
   const authHeader = request.headers.get("Authorization")
 
   if (!authHeader) {

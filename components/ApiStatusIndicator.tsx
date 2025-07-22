@@ -60,7 +60,7 @@ const ApiStatusIndicator = ({
       // Use a simple image request as a ping - this avoids CORS issues
       // We're just checking if the domain is reachable
       const img = new Image()
-      const apiDomain = new URL(apiUrl || "http://localhost:3001").origin
+      const apiDomain = new URL(apiUrl || "http://local:3001").origin
 
       // Create a promise that resolves when the image loads or rejects on error
       const pingPromise = new Promise<boolean>((resolve, reject) => {

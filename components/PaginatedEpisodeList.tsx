@@ -22,8 +22,23 @@ export default function PaginatedEpisodeList({
 }: PaginatedEpisodeListProps) {
   const [currentPage, setCurrentPage] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
+  const [search, setSearch] = useState("")
 
-  const totalPages = Math.ceil(episodes.length / episodesPerPage)
+  // Filter episodes by search
+  const filteredEpisodes = episodes.filter((ep) => {
+    const searchLower = search.toLowerCase()
+    return (
+      ep.number.toString().includes(searchLower) ||
+      (ep.title && ep.title.toLowerCase().includes(searchLower))
+    )
+  })
+
+  // Reset to first page when search changes
+  useEffect(() => {
+    setCurrentPage(0)
+  }, [search])
+
+  const totalPages = Math.ceil(filteredEpisodes.length / episodesPerPage)
 
   // Calculate which page contains the current episode
   useEffect(() => {
@@ -56,10 +71,19 @@ export default function PaginatedEpisodeList({
   }
 
   // Get current page episodes
-  const currentEpisodes = episodes.slice(currentPage * episodesPerPage, (currentPage + 1) * episodesPerPage)
+  const currentEpisodes = filteredEpisodes.slice(currentPage * episodesPerPage, (currentPage + 1) * episodesPerPage)
 
   return (
     <div className="w-full">
+      <div className="mb-4 flex items-center gap-2">
+        <input
+          type="text"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search episode number or title..."
+          className="w-full max-w-xs px-3 py-2 rounded-full bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-600"
+        />
+      </div>
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-medium">
           Episodes {currentPage * episodesPerPage + 1} -{" "}
@@ -74,6 +98,7 @@ export default function PaginatedEpisodeList({
             onClick={handlePrevPage}
             disabled={currentPage === 0}
             aria-label="Previous page"
+            className="rounded-full transition-colors hover:bg-purple-600 active:bg-purple-600 active:opacity-70"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -88,6 +113,7 @@ export default function PaginatedEpisodeList({
             onClick={handleNextPage}
             disabled={currentPage >= totalPages - 1}
             aria-label="Next page"
+            className="rounded-full transition-colors hover:bg-purple-600 active:bg-purple-600 active:opacity-70"
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
@@ -100,7 +126,7 @@ export default function PaginatedEpisodeList({
             key={episode.id}
             href={getEpisodeUrl(episode)}
             className={cn(
-              "block text-center py-2 px-3 rounded-md transition-colors",
+              "block text-center py-2 px-3 rounded-full transition-colors", // changed rounded-md to rounded-full
               currentEpisodeId === episode.id.toString()
                 ? "bg-purple-600 text-white"
                 : "bg-gray-800 hover:bg-gray-700 text-gray-200",

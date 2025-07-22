@@ -3,7 +3,7 @@ export async function getUserProfile(
   token: string,
 ): Promise<{ username: string; profile_url: string }> {
   try {
-    const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+    const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://0.0.0.0:3001";
     console.log(`Fetching user profile from: ${API_BASE_URL}/auth/profile`);
 
     const response = await fetch(`${API_BASE_URL}/auth/profile`, {

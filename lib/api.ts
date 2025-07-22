@@ -12,6 +12,7 @@ const HARDCODED_GENRES = [
   "Sports", "Supernatural", "Thriller"
 ]
 
+
 export interface AnimeResult {
   id: string | number
   title: string
@@ -528,4 +529,66 @@ export async function getZoroGenreList(): Promise<string[]> {
 
   console.log("Using hardcoded genre list as fallback.")
   return HARDCODED_GENRES
+}
+
+export async function getTopAiringAnime(): Promise<AnimeResult[]> {
+  console.log("Getting top airing anime from Consumet API...");
+
+  const url = `${API_BASE_URL}${PROVIDER_PATH}/top-airing`;
+  try {
+    const data = await safeFetch(url, { results: MOCK_POPULAR_ANIME });
+    if (data && data.results && Array.isArray(data.results)) {
+      return data.results.map(normalizeZoroAnime);
+    } else {
+      return MOCK_POPULAR_ANIME;
+    }
+  } catch (error: any) {
+    console.error("Error in getTopAiringAnime:", error);
+    return MOCK_POPULAR_ANIME;
+  }
+}
+
+export async function getMostFavoriteAnime(): Promise<AnimeResult[]> {
+  const url = `${API_BASE_URL}${PROVIDER_PATH}/most-favorite`;
+  try {
+    const data = await safeFetch(url, { results: MOCK_POPULAR_ANIME });
+    if (data && data.results && Array.isArray(data.results)) {
+      return data.results.map(normalizeZoroAnime);
+    } else {
+      return MOCK_POPULAR_ANIME;
+    }
+  } catch (error: any) {
+    console.error("Error in getMostFavoriteAnime:", error);
+    return MOCK_POPULAR_ANIME;
+  }
+}
+
+export async function getLatestCompletedAnime(): Promise<AnimeResult[]> {
+  const url = `${API_BASE_URL}${PROVIDER_PATH}/latest-completed`;
+  try {
+    const data = await safeFetch(url, { results: MOCK_POPULAR_ANIME });
+    if (data && data.results && Array.isArray(data.results)) {
+      return data.results.map(normalizeZoroAnime);
+    } else {
+      return MOCK_POPULAR_ANIME;
+    }
+  } catch (error: any) {
+    console.error("Error in getLatestCompletedAnime:", error);
+    return MOCK_POPULAR_ANIME;
+  }
+}
+
+export async function getRecentAddedAnime(): Promise<AnimeResult[]> {
+  const url = `${API_BASE_URL}${PROVIDER_PATH}/recent-added`;
+  try {
+    const data = await safeFetch(url, { results: MOCK_POPULAR_ANIME });
+    if (data && data.results && Array.isArray(data.results)) {
+      return data.results.map(normalizeZoroAnime);
+    } else {
+      return MOCK_POPULAR_ANIME;
+    }
+  } catch (error: any) {
+    console.error("Error in getRecentAddedAnime:", error);
+    return MOCK_POPULAR_ANIME;
+  }
 }

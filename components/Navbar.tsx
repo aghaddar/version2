@@ -115,11 +115,15 @@ const Navbar = () => {
     >
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          {/* Logo and Genre button together */}
-          <div className="flex items-center">
+          {/* Logo at far left */}
+          <div className="flex items-center flex-shrink-0">
             <Link href="/" className="flex items-center group">
               <Image src="/animeplus-logo.png" alt="AnimePlus" width={120} height={30} priority className="transition-opacity duration-200 group-hover:opacity-70" />
             </Link>
+          </div>
+
+          {/* Center: Genre button and search, flex-1 to push right section to edge */}
+          <div className="flex-1 flex items-center">
             <div className="hidden md:flex ml-5">
               <div
                 className="relative"
@@ -188,15 +192,8 @@ const Navbar = () => {
                 </div>
               </div>
             </div>
-          </div>
-
-          {/* Desktop Navigation */}
-        
-
-          {/* Search and User Actions */}
-          <div className="flex items-center space-x-4">
-            {/* Search Form */}
-            <form onSubmit={handleSearch} className="hidden md:flex relative">
+            {/* Search Form (already hidden on mobile) */}
+            <form onSubmit={handleSearch} className="hidden md:flex relative ml-5 flex-1">
               <input
                 type="text"
                 placeholder="Search anime..."
@@ -206,7 +203,10 @@ const Navbar = () => {
               />
               <Search className="absolute left-2.5 top-1.5 w-4 h-4 text-gray-400" />
             </form>
+          </div>
 
+          {/* User Actions at far right */}
+          <div className="flex items-center space-x-4 flex-shrink-0">
             {/* Notifications */}
             <button className="text-white hover:text-purple-400 transition-colors group">
               <Bell className="w-5 h-5 group-hover:fill-purple-400" fill="none" />

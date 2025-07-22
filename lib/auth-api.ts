@@ -1,7 +1,7 @@
 // API client for authentication operations
 
 // Base URL for API requests
-const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001"
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://0.0.0.0:3001"
 
 // Interface for login response
 export interface LoginResponse {

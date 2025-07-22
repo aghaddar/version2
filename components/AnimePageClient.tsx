@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { Play, Share2 } from "lucide-react"
+import { Play, Share2, ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { AnimeResult } from "@/lib/types"
 import WatchlistButton from "@/components/WatchlistButton"
@@ -17,6 +17,10 @@ interface AnimePageClientProps {
 export default function AnimePageClient({ animeInfo, relatedAnime }: AnimePageClientProps) {
   const [activeTab, setActiveTab] = useState("overview")
   const [imageError, setImageError] = useState(false)
+  const [relatedPage, setRelatedPage] = useState(0)
+  const relatedPerPage = 15
+  const relatedTotalPages = Math.ceil(relatedAnime.length / relatedPerPage)
+  const currentRelated = relatedAnime.slice(relatedPage * relatedPerPage, (relatedPage + 1) * relatedPerPage)
 
   if (!animeInfo) {
     return (
@@ -58,10 +62,10 @@ export default function AnimePageClient({ animeInfo, relatedAnime }: AnimePageCl
         {/* Anime Title */}
         <h1 className="text-4xl font-bold mb-8">{animeInfo.title}</h1>
 
-        <div className="flex flex-col md:flex-row gap-8">
+        <div className="flex flex-col md:flex-row gap-8 items-start">
           {/* Anime Image */}
           <div className="w-full md:w-1/3 lg:w-1/4">
-            <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg">
+            <div className="relative aspect-[2/3] w-full overflow-hidden rounded-2xl">
               <Image
                 src={getImageUrl(animeInfo.image) || "/placeholder.svg"}
                 alt={animeInfo.title}
@@ -76,7 +80,7 @@ export default function AnimePageClient({ animeInfo, relatedAnime }: AnimePageCl
             {/* Action Buttons */}
             <div className="mt-6 flex flex-col gap-3">
               <Link href={watchUrl} className="w-full">
-                <Button className="w-full bg-purple-600 hover:bg-purple-700">
+                <Button className="w-full bg-purple-600 hover:bg-purple-700 rounded-full">
                   <Play className="mr-2 h-4 w-4" />
                   Watch Now
                 </Button>
@@ -86,10 +90,10 @@ export default function AnimePageClient({ animeInfo, relatedAnime }: AnimePageCl
                 animeId={animeInfo.id}
                 title={animeInfo.title || "Unknown Anime"}
                 imageUrl={animeInfo.image}
-                className="w-full"
+                className="w-full rounded-full"
               />
 
-              <Button className="w-full" variant="outline">
+              <Button className="w-full rounded-full" variant="outline">
                 <Share2 className="mr-2 h-4 w-4" />
                 Share
               </Button>
@@ -97,7 +101,7 @@ export default function AnimePageClient({ animeInfo, relatedAnime }: AnimePageCl
           </div>
 
           {/* Anime Details */}
-          <div className="flex-1">
+          <div className="flex-1 ml-0 md:ml-8 self-start pt-0">
             {/* Tabs */}
             <div className="border-b border-gray-800 mb-6">
               <div className="flex space-x-8">
@@ -137,7 +141,7 @@ export default function AnimePageClient({ animeInfo, relatedAnime }: AnimePageCl
             {/* Tab Content */}
             {activeTab === "overview" && (
               <div>
-                <div className="bg-gray-900 rounded-lg p-6 mb-6">
+                <div className="bg-gray-900 rounded-2xl p-6 mb-6">
                   <h2 className="text-xl font-semibold mb-4">Description</h2>
                   <p className="text-gray-300 whitespace-pre-line">
                     {animeInfo.description || "No description available."}
@@ -219,10 +223,33 @@ export default function AnimePageClient({ animeInfo, relatedAnime }: AnimePageCl
             )}
 
             {activeTab === "related" && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {relatedAnime.map((anime) => (
+              <div>
+                {/* Pagination Controls */}
+                {relatedTotalPages > 1 && (
+                  <div className="flex items-center justify-between mb-4">
+                    <button
+                      onClick={() => setRelatedPage((p) => Math.max(0, p - 1))}
+                      disabled={relatedPage === 0}
+                      className="rounded-full transition-colors hover:bg-purple-600 active:bg-purple-600 active:opacity-70 px-3 py-2 text-white bg-gray-800 disabled:opacity-50"
+                    >
+                      <ChevronLeft className="h-4 w-4 inline-block mr-1" /> Previous
+                    </button>
+                    <span className="text-sm text-gray-400">
+                      Page {relatedPage + 1} of {relatedTotalPages}
+                    </span>
+                    <button
+                      onClick={() => setRelatedPage((p) => Math.min(relatedTotalPages - 1, p + 1))}
+                      disabled={relatedPage >= relatedTotalPages - 1}
+                      className="rounded-full transition-colors hover:bg-purple-600 active:bg-purple-600 active:opacity-70 px-3 py-2 text-white bg-gray-800 disabled:opacity-50"
+                    >
+                      Next <ChevronRight className="h-4 w-4 inline-block ml-1" />
+                    </button>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {currentRelated.map((anime) => (
                   <Link key={anime.id} href={`/anime/${anime.id}`} className="group">
-                    <div className="relative aspect-[2/3] rounded-lg overflow-hidden mb-2">
+                    <div className="relative aspect-[2/3] rounded-2xl overflow-hidden mb-2">
                       <Image
                         src={getImageUrl(anime.image) || "/placeholder.svg"}
                         alt={anime.title}
@@ -237,6 +264,7 @@ export default function AnimePageClient({ animeInfo, relatedAnime }: AnimePageCl
                     </h3>
                   </Link>
                 ))}
+                </div>
               </div>
             )}
           </div>

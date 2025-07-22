@@ -41,7 +41,7 @@ const AnimeCard = ({ id, title, image, type, releaseDate, rating }: AnimeCardPro
 
   return (
     <Link href={`/anime/${id.toString()}`} className="group">
-      <div className="relative w-full aspect-[2/3] overflow-hidden rounded-md mb-2 bg-gray-800">
+      <div className="relative w-full aspect-[2/3] overflow-hidden rounded-2xl mb-2 bg-gray-800">
         <Image
           src={getProxiedImageUrl(image, title) || "/placeholder.svg"}
           alt={title}
@@ -55,7 +55,7 @@ const AnimeCard = ({ id, title, image, type, releaseDate, rating }: AnimeCardPro
 
         {/* Rating badge */}
         {rating !== undefined && (
-          <div className="absolute top-2 right-2 bg-purple-600 text-white text-xs px-1.5 py-0.5 rounded-md">
+          <div className="absolute top-2 right-2 bg-purple-600 text-white text-xs px-1.5 py-0.5 rounded-2xl">
             {Number(rating).toFixed(1)}
           </div>
         )}

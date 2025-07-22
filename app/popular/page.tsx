@@ -12,11 +12,8 @@ export default async function PopularPage() {
     <div className="min-h-screen bg-black text-white">
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center mb-8">
-          <Link href="/" className="flex items-center text-gray-400 hover:text-white mr-4">
-            <ArrowLeft size={20} className="mr-2" />
-            Back
-          </Link>
-          <h1 className="text-3xl font-bold">Most Popular Anime</h1>
+          
+          <h1 className="text-3xl font-bold text-left text-purple-600">Most Popular Anime</h1>
         </div>
 
         <Suspense fallback={<div className="h-60 flex items-center justify-center">Loading popular anime...</div>}>
