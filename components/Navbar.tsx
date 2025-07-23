@@ -319,47 +319,27 @@ const Navbar = () => {
                       className={`w-4 h-4 ml-1 transition-transform duration-500 ${isGenreOpen ? "rotate-180" : ""} group-hover:rotate-180"}`}
                     />
                   </button>
-                  {(isGenreOpen && genres.length > 0) ? (() => {
-                    const columns = 5;
-                    const rows = Math.ceil(genres.length / columns);
-                    const grid = Array.from({ length: rows }, (_, rowIdx) =>
-                      genres.slice(rowIdx * columns, rowIdx * columns + columns)
-                    );
-                    return (
-                      <div
-                        className="absolute left-0 mt-1 w-[800px] bg-gray-900 rounded-2xl shadow-lg z-50 py-2 px-4"
-                        onMouseEnter={() => {
-                          if (genreCloseTimeout.current) {
-                            clearTimeout(genreCloseTimeout.current)
-                          }
-                        }}
-                        onMouseLeave={() => {
-                          genreCloseTimeout.current = setTimeout(() => setIsGenreOpen(false), 300)
-                        }}
-                      >
-                        <div className="flex flex-col gap-1">
-                          {grid.map((row, rowIdx) => (
-                            <div key={rowIdx} className="flex flex-row gap-8">
-                              {row.map((genre: string, colIdx) => (
-                                <button
-                                  key={genre}
-                                  className="block px-2 py-1 text-left w-full text-white hover:bg-purple-900/30 hover:text-purple-400 transition-colors rounded min-w-[120px]"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    setIsGenreOpen(false);
-                                    router.push(`/genre/${encodeURIComponent(genre)}`);
-                                  }}
-                                  type="button"
-                                >
-                                  {genre}
-                                </button>
-                              ))}
-                            </div>
-                          ))}
-                        </div>
+                  {isGenreOpen && genres.length > 0 && (
+                    <div className="block md:hidden mt-2 w-full bg-gray-900 rounded-2xl shadow-lg z-50 py-2 px-4 max-h-64 overflow-y-auto">
+                      <div className="grid grid-cols-2 gap-1">
+                        {genres.map((genre) => (
+                          <button
+                            key={genre}
+                            className="block px-2 py-1 text-left w-full text-white hover:bg-purple-900/30 hover:text-purple-400 transition-colors rounded min-w-[80px]"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setIsGenreOpen(false);
+                              router.push(`/genre/${encodeURIComponent(genre)}`);
+                            }}
+                            type="button"
+                          >
+                            {genre}
+                          </button>
+                        ))}
                       </div>
-                    );
-                  })() : null}
+                    </div>
+                  )}
+                  {/* Keep the grid/absolute dropdown for md+ screens if needed */}
                 </div>
                 {!user && (
                   <Link
