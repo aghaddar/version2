@@ -75,7 +75,7 @@ export default function HeroSlider({ featuredAnime }: HeroSliderProps) {
                 unoptimized
               />
               <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-transparent" />
-              <div className="absolute inset-0 flex flex-col justify-end p-4 sm:p-8 md:p-12 max-w-3xl z-10">
+              <div className="absolute inset-0 flex flex-col justify-end p-4 sm:p-8 md:p-12 max-w-3xl z-10 pb-16 sm:pb-24 md:pb-32">
                 <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 text-white">{anime.title}</h1>
                 <div className="flex items-center text-xs sm:text-sm text-gray-300 mb-2 sm:mb-4">
                   <span>{anime.type || "TV"}</span>

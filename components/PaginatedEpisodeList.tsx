@@ -85,12 +85,9 @@ export default function PaginatedEpisodeList({
         />
       </div>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-medium">
-          Episodes {currentPage * episodesPerPage + 1} -{" "}
-          {Math.min((currentPage + 1) * episodesPerPage, episodes.length)}
-          {episodes.length > 0 ? ` (of ${episodes.length})` : ""}
+        <h3 className="text-base sm:text-lg font-medium">
+          <span className="text-xs sm:text-base">Episodes {currentPage * episodesPerPage + 1} - {Math.min((currentPage + 1) * episodesPerPage, episodes.length)}{episodes.length > 0 ? ` (of ${episodes.length})` : ""}</span>
         </h3>
-
         <div className="flex items-center space-x-2">
           <Button
             variant="outline"
@@ -98,41 +95,39 @@ export default function PaginatedEpisodeList({
             onClick={handlePrevPage}
             disabled={currentPage === 0}
             aria-label="Previous page"
-            className="rounded-full transition-colors hover:bg-purple-600 active:bg-purple-600 active:opacity-70"
+            className="rounded-full transition-colors hover:bg-purple-600 active:bg-purple-600 active:opacity-70 text-xs sm:text-sm"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-
-          <span className="text-sm">
+          <span className="text-xs sm:text-sm">
             Page {currentPage + 1} of {totalPages}
           </span>
-
           <Button
             variant="outline"
             size="icon"
             onClick={handleNextPage}
             disabled={currentPage >= totalPages - 1}
             aria-label="Next page"
-            className="rounded-full transition-colors hover:bg-purple-600 active:bg-purple-600 active:opacity-70"
+            className="rounded-full transition-colors hover:bg-purple-600 active:bg-purple-600 active:opacity-70 text-xs sm:text-sm"
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
-      <div ref={containerRef} className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+      <div ref={containerRef} className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2">
         {currentEpisodes.map((episode) => (
           <Link
             key={episode.id}
             href={getEpisodeUrl(episode)}
             className={cn(
-              "block text-center py-2 px-3 rounded-full transition-colors", // changed rounded-md to rounded-full
+              "flex items-center justify-center aspect-square w-8 h-8 sm:w-10 sm:h-10 rounded-full text-xs sm:text-sm font-medium transition-colors",
               currentEpisodeId === episode.id.toString()
                 ? "bg-purple-600 text-white"
                 : "bg-gray-800 hover:bg-gray-700 text-gray-200",
             )}
           >
-            Episode {episode.number}
+            {episode.number}
           </Link>
         ))}
       </div>

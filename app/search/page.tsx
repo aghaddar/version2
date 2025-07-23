@@ -19,12 +19,8 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   return (
     <div className="min-h-screen bg-black text-white pt-20">
       <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center mb-8">
-          <Link href="/" className="flex items-center text-gray-400 hover:text-white mr-4">
-            <ArrowLeft size={20} className="mr-2" />
-            Back
-          </Link>
-          <h1 className="text-2xl font-bold">{query ? `Search Results for "${query}"` : "Search Anime"}</h1>
+        <div className="mb-8">
+          <h1 className="text-xl font-bold">{query ? `Search Results for "${query}"` : "Search Anime"}</h1>
         </div>
 
         <Suspense fallback={<div className="h-60 flex items-center justify-center">Searching...</div>}>

@@ -289,24 +289,6 @@ const Navbar = () => {
                 <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
               </form>
               <nav className="flex flex-col space-y-3">
-                <Link
-                  href="/"
-                  className={`block px-3 py-2 rounded-md ${pathname === "/" ? "bg-purple-900/30 text-purple-400" : "text-white hover:bg-gray-800"}`}
-                >
-                  Home
-                </Link>
-                <Link
-                  href="/trending"
-                  className={`block px-3 py-2 rounded-md ${pathname === "/trending" ? "bg-purple-900/30 text-purple-400" : "text-white hover:bg-gray-800"}`}
-                >
-                  Trending
-                </Link>
-                <Link
-                  href="/popular"
-                  className={`block px-3 py-2 rounded-md ${pathname === "/popular" ? "bg-purple-900/30 text-purple-400" : "text-white hover:bg-gray-800"}`}
-                >
-                  Popular
-                </Link>
                 {/* Genre Dropdown Mobile */}
                 <div className="relative">
                   <button
